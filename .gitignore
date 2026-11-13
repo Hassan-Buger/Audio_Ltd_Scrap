@@ -1,0 +1,41 @@
+# Python Virtual Environment
+.venv/
+venv/
+env/
+ENV/
+
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local database files
+*.db
+*.sqlite
+*.sqlite3
+scraper/audiovideo.db
+
+# Environment variables & secrets (NEVER COMMIT)
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+
+# Local temporary reports & exports
+scraper/exports/*.csv
+scraper/exports/*.json
+scraper/reports/*
+!scraper/reports/.gitkeep
+!scraper/exports/.gitkeep
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

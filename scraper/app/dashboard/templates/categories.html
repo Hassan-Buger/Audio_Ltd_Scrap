@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Categories - Audiovideo.lt Console{% endblock %}
+
+{% block breadcrumb %}
+  <span class="text-muted">Console</span> / Categories
+{% endblock %}
+
+{% block content %}
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+    <h1>Category Tree & Coverage</h1>
+    <a href="/api/v1/exports/categories/json" class="btn btn-secondary">Export JSON Tree</a>
+  </div>
+
+  <!-- Coverage Summary -->
+  <div class="grid-metrics">
+    <div class="metric-card">
+      <div class="text-muted">Total Categories</div>
+      <div class="metric-value">{{ coverage.total_categories_discovered }}</div>
+    </div>
+    <div class="metric-card">
+      <div class="text-muted">Root Categories</div>
+      <div class="metric-value">{{ coverage.root_categories }}</div>
+    </div>
+    <div class="metric-card">
+      <div class="text-muted">Subcategories</div>
+      <div class="metric-value">{{ coverage.subcategories }}</div>
+    </div>
+    <div class="metric-card">
+      <div class="text-muted">Categories with Products</div>
+      <div class="metric-value" style="color: var(--color-success);">{{ coverage.categories_with_products }}</div>
+      <div class="text-muted" style="font-size: 0.8rem; margin-top: 4px;">{{ coverage.coverage_percentage }}% coverage</div>
+    </div>
+  </div>
+
+  <!-- Category List -->
+  <div class="card">
+    <h2>Discovered Categories</h2>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Slug</th>
+            <th>Level</th>
+            <th>Products Extracted</th>
+            <th>Source URL</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cat in categories %}
+          <tr>
+            <td class="mono">#{{ cat.id }}</td>
+            <td style="font-weight: 600; padding-left: {{ (cat.level * 24) + 12 }}px;">
+              {% if cat.level > 0 %}↳ {% endif %}{{ cat.name }}
+            </td>
+            <td class="mono text-muted">{{ cat.slug }}</td>
+            <td>Level {{ cat.level }}</td>
+            <td>
+              <span class="badge {% if cat.product_count_observed > 0 %}badge-success{% else %}badge-info{% endif %}">
+                {{ cat.product_count_observed }} products
+              </span>
+            </td>
+            <td class="mono text-muted" style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              <a href="{{ cat.source_url }}" target="_blank" style="color: inherit;">{{ cat.source_url }}</a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" style="text-align: center; padding: 24px;" class="text-muted">No categories discovered yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

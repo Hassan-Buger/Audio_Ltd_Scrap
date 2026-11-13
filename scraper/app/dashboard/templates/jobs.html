@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Scraping Jobs - Audiovideo.lt Console{% endblock %}
+
+{% block breadcrumb %}
+  <span class="text-muted">Console</span> / Scraping Jobs
+{% endblock %}
+
+{% block content %}
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+    <h1>Crawl & Scraping Jobs</h1>
+  </div>
+
+  <!-- Start New Job Card -->
+  <div class="card">
+    <h2>Start a New Crawl Job</h2>
+    <form action="/dashboard/jobs/start" method="POST" style="display: flex; gap: var(--space-4); align-items: flex-end; flex-wrap: wrap;">
+      <div>
+        <label style="display: block; font-weight: 600; margin-bottom: var(--space-1);">Job Scope</label>
+        <select name="scope" class="input-text">
+          <option value="full">Full Catalogue Discovery</option>
+          <option value="category">Category Discovery</option>
+          <option value="manufacturer">Manufacturer Crawl</option>
+        </select>
+      </div>
+      <div>
+        <label style="display: block; font-weight: 600; margin-bottom: var(--space-1);">Custom Seed URL (Optional)</label>
+        <input type="text" name="seed_url" class="input-text" placeholder="https://www.audiovideo.lt/..." style="width: 320px;">
+      </div>
+      <button type="submit" class="btn btn-primary">Start Job</button>
+    </form>
+  </div>
+
+  <!-- Job List -->
+  <div class="card">
+    <h2>Job History</h2>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Job ID</th>
+            <th>Scope</th>
+            <th>Status</th>
+            <th>Discovered</th>
+            <th>Processed</th>
+            <th>Products</th>
+            <th>Started</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for job in jobs %}
+          <tr>
+            <td class="mono">#{{ job.id }}</td>
+            <td style="text-transform: capitalize;">{{ job.scope }}</td>
+            <td>
+              <span class="badge {% if job.status == 'completed' %}badge-success{% elif job.status == 'running' %}badge-info{% elif 'failed' in job.status or 'error' in job.status %}badge-error{% else %}badge-warning{% endif %}">
+                {{ job.status }}
+              </span>
+            </td>
+            <td>{{ job.urls_discovered }}</td>
+            <td>{{ job.urls_processed }}</td>
+            <td>{{ job.products_extracted }}</td>
+            <td class="mono text-muted">{{ job.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td style="display: flex; gap: var(--space-2);">
+              <a href="/dashboard/jobs/{{ job.id }}" class="btn btn-secondary" style="padding: 2px 8px;">Inspect</a>
+              {% if job.status == 'running' %}
+              <form action="/dashboard/jobs/{{ job.id }}/pause" method="POST" style="display: inline;">
+                <button type="submit" class="btn btn-secondary" style="padding: 2px 8px;">Pause</button>
+              </form>
+              {% elif job.status == 'paused' %}
+              <form action="/dashboard/jobs/{{ job.id }}/resume" method="POST" style="display: inline;">
+                <button type="submit" class="btn btn-primary" style="padding: 2px 8px;">Resume</button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 24px;" class="text-muted">No jobs recorded.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

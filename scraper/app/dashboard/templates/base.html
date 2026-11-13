@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Audiovideo.lt Operations Console{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <script src="https://unpkg.com/htmx.org@1.9.10" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <a href="/dashboard" class="sidebar-brand">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+        Audiovideo.lt
+      </a>
+      <nav class="sidebar-nav">
+        <a href="/dashboard" class="nav-link {% if active_page == 'overview' %}active{% endif %}">
+          Overview
+        </a>
+        <a href="/dashboard/jobs" class="nav-link {% if active_page == 'jobs' %}active{% endif %}">
+          Scraping Jobs
+        </a>
+        <a href="/dashboard/products" class="nav-link {% if active_page == 'products' %}active{% endif %}">
+          Products
+        </a>
+        <a href="/dashboard/categories" class="nav-link {% if active_page == 'categories' %}active{% endif %}">
+          Categories
+        </a>
+        <a href="/dashboard/failures" class="nav-link {% if active_page == 'failures' %}active{% endif %}">
+          Failures & Retries
+        </a>
+        <a href="/dashboard/reports" class="nav-link {% if active_page == 'reports' %}active{% endif %}">
+          Reports & Exports
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main Wrapper -->
+    <div class="main-wrapper">
+      <header class="top-bar">
+        <div class="breadcrumb">
+          {% block breadcrumb %}<span class="text-muted">Console</span> / Overview{% endblock %}
+        </div>
+        <div>
+          <span class="badge badge-success">API v1 Active</span>
+        </div>
+      </header>
+      <main class="content-area">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+</body>
+</html>

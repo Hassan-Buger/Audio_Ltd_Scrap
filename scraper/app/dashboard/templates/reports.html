@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Reports & Quality Metrics - Audiovideo.lt Console{% endblock %}
+
+{% block breadcrumb %}
+  <span class="text-muted">Console</span> / Reports & Exports
+{% endblock %}
+
+{% block content %}
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+    <h1>Reports & Data Quality</h1>
+    <div style="display: flex; gap: var(--space-2);">
+      <a href="/api/v1/exports/products/csv" class="btn btn-secondary">Export Products CSV</a>
+      <a href="/api/v1/exports/products/json" class="btn btn-secondary">Export Products JSON</a>
+      <a href="/api/v1/exports/categories/json" class="btn btn-secondary">Export Categories JSON</a>
+    </div>
+  </div>
+
+  <!-- Coverage Report -->
+  <div class="card">
+    <h2>Frontier Coverage & Discovery Metrics</h2>
+    <p class="text-muted" style="margin-bottom: var(--space-3);">
+      Overall Crawl Completion Rate: <strong>{{ coverage.overall_crawl_completion_rate }}%</strong> 
+      (Denominator: Discovered minus Skipped URLs)
+    </p>
+    <div class="grid-metrics">
+      <div class="metric-card">
+        <div class="text-muted">Discovered URLs</div>
+        <div class="metric-value">{{ coverage.discovered_urls }}</div>
+      </div>
+      <div class="metric-card">
+        <div class="text-muted">Processed (200 OK)</div>
+        <div class="metric-value" style="color: var(--color-success);">{{ coverage.processed_urls }}</div>
+      </div>
+      <div class="metric-card">
+        <div class="text-muted">Inaccessible (Restricted)</div>
+        <div class="metric-value" style="color: var(--color-warning);">{{ coverage.inaccessible_urls }}</div>
+      </div>
+      <div class="metric-card">
+        <div class="text-muted">Terminal Failures</div>
+        <div class="metric-value" style="color: var(--color-error);">{{ coverage.failed_terminal_urls }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data Completeness -->
+  <div class="card">
+    <h2>Product Field Completeness & Quality</h2>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Fill Rate (%)</th>
+            <th>Completeness Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>SKU Code</strong></td>
+            <td>{{ completeness.sku_fill_rate }}%</td>
+            <td><span class="badge {% if completeness.sku_fill_rate > 80 %}badge-success{% else %}badge-info{% endif %}">Observed</span></td>
+          </tr>
+          <tr>
+            <td><strong>EAN / GTIN Barcode</strong></td>
+            <td>{{ completeness.ean_fill_rate }}%</td>
+            <td><span class="badge {% if completeness.ean_fill_rate > 50 %}badge-success{% else %}badge-info{% endif %}">Observed</span></td>
+          </tr>
+          <tr>
+            <td><strong>Price</strong></td>
+            <td>{{ completeness.price_fill_rate }}%</td>
+            <td><span class="badge {% if completeness.price_fill_rate > 80 %}badge-success{% else %}badge-info{% endif %}">Observed</span></td>
+          </tr>
+          <tr>
+            <td><strong>Description</strong></td>
+            <td>{{ completeness.description_fill_rate }}%</td>
+            <td><span class="badge {% if completeness.description_fill_rate > 80 %}badge-success{% else %}badge-info{% endif %}">Observed</span></td>
+          </tr>
+          <tr>
+            <td><strong>Technical Specifications</strong></td>
+            <td>{{ completeness.specifications_fill_rate }}%</td>
+            <td><span class="badge {% if completeness.specifications_fill_rate > 80 %}badge-success{% else %}badge-info{% endif %}">Observed</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Error Breakdown -->
+  <div class="card">
+    <h2>Failure Categories Breakdown</h2>
+    <div class="grid-metrics">
+      <div class="metric-card">
+        <div class="text-muted">Total Errors</div>
+        <div class="metric-value">{{ errors.total_errors }}</div>
+      </div>
+      <div class="metric-card">
+        <div class="text-muted">Retryable Errors</div>
+        <div class="metric-value">{{ errors.retryable_errors }}</div>
+      </div>
+      <div class="metric-card">
+        <div class="text-muted">Access Restricted / Cloudflare</div>
+        <div class="metric-value" style="color: var(--color-warning);">{{ errors.inaccessible_access_restricted }}</div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

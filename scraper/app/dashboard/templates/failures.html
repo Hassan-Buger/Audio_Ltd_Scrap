@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Failures & Inaccessible URLs - Audiovideo.lt Console{% endblock %}
+
+{% block breadcrumb %}
+  <span class="text-muted">Console</span> / Failures & Retries
+{% endblock %}
+
+{% block content %}
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+    <h1>Failures & Inaccessible URLs</h1>
+    <form action="/dashboard/failures/retry-all" method="POST">
+      <button type="submit" class="btn btn-primary">Retry Eligible Failures</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>URL</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Attempts</th>
+            <th>HTTP Status</th>
+            <th>Last Error</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in failed_urls %}
+          <tr>
+            <td class="mono">#{{ u.id }}</td>
+            <td class="mono" style="max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              {{ u.url }}
+            </td>
+            <td style="text-transform: capitalize;">{{ u.url_type }}</td>
+            <td>
+              <span class="badge {% if u.status == 'inaccessible' %}badge-warning{% elif u.status == 'failed_retryable' %}badge-info{% else %}badge-error{% endif %}">
+                {{ u.status }}
+              </span>
+            </td>
+            <td>{{ u.attempts }}</td>
+            <td class="mono">{{ u.http_status or '-' }}</td>
+            <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              {{ u.last_error or '-' }}
+            </td>
+            <td>
+              <form action="/dashboard/failures/retry/{{ u.id }}" method="POST">
+                <button type="submit" class="btn btn-secondary" style="padding: 2px 8px;">Retry</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 24px;" class="text-muted">No failed or inaccessible URLs found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

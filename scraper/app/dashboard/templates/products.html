@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Products - Audiovideo.lt Console{% endblock %}
+
+{% block breadcrumb %}
+  <span class="text-muted">Console</span> / Products
+{% endblock %}
+
+{% block content %}
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+    <h1>Product Catalogue</h1>
+    <div style="display: flex; gap: var(--space-2);">
+      <a href="/api/v1/exports/products/csv" class="btn btn-secondary">Export CSV</a>
+      <a href="/api/v1/exports/products/json" class="btn btn-secondary">Export JSON</a>
+    </div>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="card" style="padding: var(--space-3);">
+    <form method="GET" action="/dashboard/products" style="display: flex; gap: var(--space-3); flex-wrap: wrap;">
+      <input type="text" name="search" class="input-text" placeholder="Search by title, SKU, or EAN..." value="{{ search or '' }}" style="flex: 1; min-width: 200px;">
+      <input type="text" name="brand" class="input-text" placeholder="Brand..." value="{{ brand or '' }}" style="width: 150px;">
+      <button type="submit" class="btn btn-primary">Filter</button>
+      {% if search or brand %}
+      <a href="/dashboard/products" class="btn btn-secondary">Clear</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <!-- Products Table -->
+  <div class="card">
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Title (LT)</th>
+            <th>SKU</th>
+            <th>Brand</th>
+            <th>Price</th>
+            <th>Stock</th>
+            <th>Completeness</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for prod in products %}
+          <tr>
+            <td class="mono">#{{ prod.id }}</td>
+            <td style="font-weight: 500; max-width: 320px;">{{ prod.title }}</td>
+            <td class="mono">{{ prod.sku or '-' }}</td>
+            <td>{{ prod.brand_name or '-' }}</td>
+            <td style="font-weight: 600;">
+              {% if prod.price is not none %}
+                {{ prod.price }} {{ prod.currency }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>
+              {% if prod.in_stock is true %}
+                <span class="badge badge-success">In Stock</span>
+              {% elif prod.in_stock is false %}
+                <span class="badge badge-error">Out of Stock</span>
+              {% else %}
+                <span class="text-muted">-</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="badge {% if prod.is_complete %}badge-success{% else %}badge-warning{% endif %}">
+                {{ "Complete" if prod.is_complete else "Incomplete" }}
+              </span>
+            </td>
+            <td>
+              <a href="/dashboard/products/{{ prod.id }}" class="btn btn-secondary" style="padding: 2px 8px;">View</a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 24px;" class="text-muted">No products found matching filters.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination Controls -->
+    {% if total_pages > 1 %}
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: var(--space-4);">
+      <span class="text-muted">Page {{ page }} of {{ total_pages }} ({{ total }} total)</span>
+      <div style="display: flex; gap: var(--space-2);">
+        {% if page > 1 %}
+        <a href="?page={{ page - 1 }}&search={{ search or '' }}&brand={{ brand or '' }}" class="btn btn-secondary">Previous</a>
+        {% endif %}
+        {% if page < total_pages %}
+        <a href="?page={{ page + 1 }}&search={{ search or '' }}&brand={{ brand or '' }}" class="btn btn-secondary">Next</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+{% endblock %}

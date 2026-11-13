@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Overview - Audiovideo.lt Console{% endblock %}
+
+{% block breadcrumb %}
+  <span class="text-muted">Console</span> / Overview
+{% endblock %}
+
+{% block content %}
+  <h1>Catalogue Operations Overview</h1>
+
+  <!-- Metrics Grid -->
+  <div class="grid-metrics">
+    <div class="metric-card">
+      <div class="text-muted">Total Products</div>
+      <div class="metric-value">{{ overview.total_products }}</div>
+      <div class="text-muted" style="font-size: 0.8rem; margin-top: 4px;">{{ overview.complete_products }} complete records</div>
+    </div>
+    <div class="metric-card">
+      <div class="text-muted">Categories Discovered</div>
+      <div class="metric-value">{{ overview.total_categories }}</div>
+    </div>
+    <div class="metric-card">
+      <div class="text-muted">Manufacturers</div>
+      <div class="metric-value">{{ overview.total_manufacturers }}</div>
+    </div>
+    <div class="metric-card">
+      <div class="text-muted">Active Jobs</div>
+      <div class="metric-value" style="color: var(--color-accent);">{{ overview.active_jobs }}</div>
+    </div>
+    <div class="metric-card">
+      <div class="text-muted">URLs Processed</div>
+      <div class="metric-value">{{ overview.total_urls_processed }}</div>
+      <div class="text-muted" style="font-size: 0.8rem; margin-top: 4px;">{{ overview.total_urls_inaccessible }} restricted/inaccessible</div>
+    </div>
+  </div>
+
+  <!-- Recent Jobs -->
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+      <h2>Recent Crawl Jobs</h2>
+      <a href="/dashboard/jobs" class="btn btn-secondary">Manage Jobs</a>
+    </div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Job ID</th>
+            <th>Scope</th>
+            <th>Status</th>
+            <th>Discovered</th>
+            <th>Processed</th>
+            <th>Products</th>
+            <th>Created At</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for job in recent_jobs %}
+          <tr>
+            <td class="mono">#{{ job.id }}</td>
+            <td style="text-transform: capitalize;">{{ job.scope }}</td>
+            <td>
+              <span class="badge {% if job.status == 'completed' %}badge-success{% elif job.status == 'running' %}badge-info{% elif 'failed' in job.status or 'error' in job.status %}badge-error{% else %}badge-warning{% endif %}">
+                {{ job.status }}
+              </span>
+            </td>
+            <td>{{ job.urls_discovered }}</td>
+            <td>{{ job.urls_processed }}</td>
+            <td>{{ job.products_extracted }}</td>
+            <td class="mono text-muted">{{ job.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td><a href="/dashboard/jobs/{{ job.id }}" class="btn btn-secondary" style="padding: 2px 8px;">View</a></td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 24px;" class="text-muted">No scrape jobs created yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

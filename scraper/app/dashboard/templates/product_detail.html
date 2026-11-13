@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.title }} - Audiovideo.lt Console{% endblock %}
+
+{% block breadcrumb %}
+  <span class="text-muted">Console</span> / <a href="/dashboard/products" style="color: inherit; text-decoration: none;">Products</a> / #{{ product.id }}
+{% endblock %}
+
+{% block content %}
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-4);">
+    <div>
+      <h1>{{ product.title }}</h1>
+      <div style="display: flex; gap: var(--space-3); align-items: center; margin-top: var(--space-1);">
+        <span class="mono text-muted">SKU: {{ product.sku or 'N/A' }}</span>
+        <span class="text-muted">•</span>
+        <span class="mono text-muted">EAN: {{ product.ean or 'N/A' }}</span>
+        <span class="text-muted">•</span>
+        <span>Brand: <strong>{{ product.brand_name or 'N/A' }}</strong></span>
+      </div>
+    </div>
+    <div style="text-align: right;">
+      <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-accent);">
+        {% if product.price is not none %}
+          {{ product.price }} {{ product.currency }}
+        {% else %}
+          Price Unlisted
+        {% endif %}
+      </div>
+      <div>
+        <a href="{{ product.canonical_url }}" target="_blank" class="btn btn-secondary" style="font-size: 0.8rem; margin-top: 4px;">
+          View Source Page ↗
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Source Language & Translation Side by Side -->
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-2);">
+        <h3>Original Lithuanian Source</h3>
+        <span class="badge badge-info">Authoritative Source</span>
+      </div>
+      <p style="white-space: pre-wrap; font-size: 0.88rem;">{{ product.description or 'No description provided.' }}</p>
+    </div>
+
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-2);">
+        <h3>English Translation</h3>
+        {% if product.translations %}
+        <span class="badge badge-success">Translated ({{ product.translations[0].language }})</span>
+        {% else %}
+        <span class="badge badge-warning">Not Translated</span>
+        {% endif %}
+      </div>
+      {% if product.translations %}
+        <p style="white-space: pre-wrap; font-size: 0.88rem;">{{ product.translations[0].description }}</p>
+      {% else %}
+        <p class="text-muted">No translation generated yet. Lithuanian source remains intact.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Technical Specifications -->
+  <div class="card">
+    <h3>Technical Specifications ({{ product.specifications | length }})</h3>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 35%;">Parameter (Lithuanian)</th>
+            <th>Extracted Value</th>
+            <th>Normalized Numeric</th>
+            <th>Unit</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for spec in product.specifications %}
+          <tr>
+            <td style="font-weight: 600;">{{ spec.label }}</td>
+            <td>{{ spec.value }}</td>
+            <td class="mono">{{ spec.numeric_value or '-' }}</td>
+            <td>{{ spec.unit or '-' }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="4" style="text-align: center; padding: 16px;" class="text-muted">No structured specifications found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Provenance & Source Discovery -->
+  <div class="card">
+    <h3>Discovery & Provenance History</h3>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Source URL</th>
+            <th>Discovery Type</th>
+            <th>Crawl Job</th>
+            <th>Timestamp</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for src in product.sources %}
+          <tr>
+            <td class="mono" style="max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              <a href="{{ src.source_url }}" target="_blank" style="color: inherit;">{{ src.source_url }}</a>
+            </td>
+            <td style="text-transform: capitalize;">{{ src.discovery_type }}</td>
+            <td class="mono">#{{ src.crawl_job_id or '-' }}</td>
+            <td class="mono text-muted">{{ src.discovered_at.strftime('%Y-%m-%d %H:%M') if src.discovered_at else '-' }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="4" style="text-align: center; padding: 16px;" class="text-muted">No provenance records available.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}
