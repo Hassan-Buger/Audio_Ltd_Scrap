@@ -9,17 +9,25 @@
 {% block content %}
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
     <h1>Crawl Job #{{ job.id }}</h1>
-    <div style="display: flex; gap: var(--space-2);">
+    <div style="display: flex; gap: var(--space-2); flex-wrap: wrap;">
+      {% if job.status in ['queued', 'running', 'paused'] %}
+      <form action="/dashboard/jobs/{{ job.id }}/run-batch" method="POST">
+        <button type="submit" class="btn btn-secondary" title="Manually trigger processing of next batch of frontier URLs">Process Batch Now</button>
+      </form>
+      <form action="/dashboard/jobs/{{ job.id }}/dispatch" method="POST">
+        <button type="submit" class="btn btn-primary" title="Launch background execution loop">Run in Background</button>
+      </form>
+      {% endif %}
       {% if job.status == 'running' %}
       <form action="/dashboard/jobs/{{ job.id }}/pause" method="POST">
-        <button type="submit" class="btn btn-secondary">Pause Job</button>
+        <button type="submit" class="btn btn-secondary">Pause</button>
       </form>
       <form action="/dashboard/jobs/{{ job.id }}/cancel" method="POST">
-        <button type="submit" class="btn btn-danger">Cancel Job</button>
+        <button type="submit" class="btn btn-danger">Cancel</button>
       </form>
       {% elif job.status == 'paused' %}
       <form action="/dashboard/jobs/{{ job.id }}/resume" method="POST">
-        <button type="submit" class="btn btn-primary">Resume Job</button>
+        <button type="submit" class="btn btn-primary">Resume</button>
       </form>
       {% endif %}
     </div>

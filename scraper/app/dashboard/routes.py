@@ -1,7 +1,7 @@
 """Server-rendered dashboard routes using Jinja2 templates and HTMX."""
 import os
 from typing import Optional
-from fastapi import APIRouter, Depends, Request, Form, Query, HTTPException, status
+from fastapi import APIRouter, Depends, Request, Form, Query, HTTPException, status, BackgroundTasks
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -19,6 +19,8 @@ from app.services.coverage import (
     get_completeness_report, get_error_report
 )
 from app.services.discovery import init_job_seeds
+from app.services.job_runner import JobRunner
+from app.services.dispatcher import JobDispatcher
 
 templates_dir = os.path.join(os.path.dirname(__file__), "templates")
 templates = Jinja2Templates(directory=templates_dir)
@@ -61,6 +63,7 @@ def dashboard_jobs(request: Request, db: Session = Depends(get_db)):
 
 @router.post("/jobs/start")
 def dashboard_start_job(
+    background_tasks: BackgroundTasks,
     scope: str = Form("full"),
     seed_url: Optional[str] = Form(None),
     db: Session = Depends(get_db)
@@ -70,7 +73,22 @@ def dashboard_start_job(
     job = JobRepository.create_job(db, scope=JobScope(scope))
     init_job_seeds(db, job.id, custom_seeds=custom_seeds)
     db.commit()
+    JobDispatcher.dispatch_job(job.id, background_tasks=background_tasks)
     return RedirectResponse(url=f"/dashboard/jobs/{job.id}", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/jobs/{job_id}/run-batch")
+def dashboard_run_batch(job_id: int, db: Session = Depends(get_db)):
+    """Manually process one batch of URLs for immediate feedback."""
+    JobRunner.run_job_batch(db, job_id=job_id, batch_size=10)
+    return RedirectResponse(url=f"/dashboard/jobs/{job_id}", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/jobs/{job_id}/dispatch")
+def dashboard_dispatch_job(job_id: int, background_tasks: BackgroundTasks):
+    """Trigger background execution for an existing queued or running job."""
+    JobDispatcher.dispatch_job(job_id, background_tasks=background_tasks)
+    return RedirectResponse(url=f"/dashboard/jobs/{job_id}", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/jobs/{job_id}", response_class=HTMLResponse)

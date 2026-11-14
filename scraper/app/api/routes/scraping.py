@@ -1,7 +1,7 @@
 """Scraping control and dispatch API endpoints."""
 from typing import List, Optional
 from urllib.parse import quote_plus
-from fastapi import APIRouter, Depends, Query, HTTPException, status
+from fastapi import APIRouter, Depends, Query, HTTPException, status, BackgroundTasks
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.api.dependencies import get_db, verify_api_key
@@ -13,6 +13,7 @@ from app.database.repositories.category_repo import CategoryRepository
 from app.database.repositories.manufacturer_repo import ManufacturerRepository
 from app.services.discovery import init_job_seeds
 from app.services.coverage import get_overview_report
+from app.services.dispatcher import JobDispatcher
 
 router = APIRouter(prefix="/scraping", tags=["Scraping Control"])
 
@@ -23,6 +24,7 @@ class URLListPayload(BaseModel):
 
 @router.post("/start", response_model=APIResponse[dict], status_code=status.HTTP_202_ACCEPTED)
 def start_scraping_job(
+    background_tasks: BackgroundTasks,
     payload: CrawlJobCreate = CrawlJobCreate(),
     db: Session = Depends(get_db),
     _: str = Depends(verify_api_key)
@@ -31,15 +33,17 @@ def start_scraping_job(
     job = JobRepository.create_job(db, scope=payload.scope, config=payload.model_dump())
     init_job_seeds(db, job.id, custom_seeds=payload.seed_urls)
     db.commit()
+    JobDispatcher.dispatch_job(job.id, background_tasks=background_tasks)
     return APIResponse(
         success=True,
-        message="Scraping job queued successfully",
+        message="Scraping job queued and dispatched successfully",
         data={"job_id": job.id, "status": job.status, "scope": job.scope}
     )
 
 
 @router.post("/start/category", response_model=APIResponse[dict], status_code=status.HTTP_202_ACCEPTED)
 def start_category_scraping(
+    background_tasks: BackgroundTasks,
     category_id: int = Query(...),
     db: Session = Depends(get_db),
     _: str = Depends(verify_api_key)
@@ -54,6 +58,7 @@ def start_category_scraping(
     )
     URLRepository.enqueue_url(db, job.id, cat.source_url)
     db.commit()
+    JobDispatcher.dispatch_job(job.id, background_tasks=background_tasks)
     return APIResponse(
         success=True,
         message=f"Category scraping queued for '{cat.name}'",
@@ -63,6 +68,7 @@ def start_category_scraping(
 
 @router.post("/start/manufacturer", response_model=APIResponse[dict], status_code=status.HTTP_202_ACCEPTED)
 def start_manufacturer_scraping(
+    background_tasks: BackgroundTasks,
     manufacturer_id: int = Query(...),
     db: Session = Depends(get_db),
     _: str = Depends(verify_api_key)
@@ -77,6 +83,7 @@ def start_manufacturer_scraping(
     )
     URLRepository.enqueue_url(db, job.id, man.source_url)
     db.commit()
+    JobDispatcher.dispatch_job(job.id, background_tasks=background_tasks)
     return APIResponse(
         success=True,
         message=f"Manufacturer scraping queued for '{man.name}'",
@@ -86,6 +93,7 @@ def start_manufacturer_scraping(
 
 @router.post("/start/search", response_model=APIResponse[dict], status_code=status.HTTP_202_ACCEPTED)
 def start_search_scraping(
+    background_tasks: BackgroundTasks,
     query: str = Query(..., min_length=1),
     db: Session = Depends(get_db),
     _: str = Depends(verify_api_key)
@@ -96,6 +104,7 @@ def start_search_scraping(
     job = JobRepository.create_job(db, scope=JobScope.SEARCH, config={"query": query, "url": search_url})
     URLRepository.enqueue_url(db, job.id, search_url)
     db.commit()
+    JobDispatcher.dispatch_job(job.id, background_tasks=background_tasks)
     return APIResponse(
         success=True,
         message=f"Search scraping queued for '{query}'",
@@ -105,6 +114,7 @@ def start_search_scraping(
 
 @router.post("/start/urls", response_model=APIResponse[dict], status_code=status.HTTP_202_ACCEPTED)
 def start_urls_scraping(
+    background_tasks: BackgroundTasks,
     payload: URLListPayload,
     db: Session = Depends(get_db),
     _: str = Depends(verify_api_key)
@@ -116,6 +126,7 @@ def start_urls_scraping(
     job = JobRepository.create_job(db, scope=JobScope.CUSTOM_URLS, config={"urls_count": len(payload.urls)})
     enqueued = URLRepository.enqueue_batch(db, job.id, payload.urls)
     db.commit()
+    JobDispatcher.dispatch_job(job.id, background_tasks=background_tasks)
     return APIResponse(
         success=True,
         message=f"Custom URLs scraping queued ({enqueued} valid URLs enqueued)",
