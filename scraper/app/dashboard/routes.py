@@ -1,11 +1,13 @@
 """Server-rendered dashboard routes using Jinja2 templates and HTMX."""
 import os
+from pathlib import Path
 from typing import Optional
 from fastapi import APIRouter, Depends, Request, Form, Query, HTTPException, status, BackgroundTasks, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import update, and_
+from app.config import settings
 from app.api.dependencies import get_db
 from app.database.models.url import CrawlURL
 from app.schemas.job import JobScope, JobStatus
@@ -57,9 +59,34 @@ def dashboard_jobs(request: Request, db: Session = Depends(get_db)):
         context={
             "request": request,
             "active_page": "jobs",
-            "jobs": jobs
+            "jobs": jobs,
+            "current_cookies": settings.SCRAPER_COOKIES or ""
         }
     )
+
+
+@router.post("/settings/cookies")
+def dashboard_update_cookies(cookies: str = Form(""), db: Session = Depends(get_db)):
+    """Update active scraper clearance cookie."""
+    clean_cookie = cookies.strip()
+    settings.SCRAPER_COOKIES = clean_cookie if clean_cookie else None
+
+    env_file = Path(__file__).resolve().parent.parent.parent / ".env"
+    if env_file.exists():
+        lines = env_file.read_text(encoding="utf-8").splitlines()
+        new_lines = []
+        found = False
+        for line in lines:
+            if line.startswith("SCRAPER_COOKIES="):
+                new_lines.append(f"SCRAPER_COOKIES={clean_cookie}")
+                found = True
+            else:
+                new_lines.append(line)
+        if not found:
+            new_lines.append(f"SCRAPER_COOKIES={clean_cookie}")
+        env_file.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+
+    return RedirectResponse(url="/dashboard/jobs", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.post("/jobs/start")

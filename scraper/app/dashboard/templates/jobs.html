@@ -11,6 +11,29 @@
     <h1>Crawl & Scraping Jobs</h1>
   </div>
 
+  <!-- Cloudflare Clearance Cookie Card -->
+  <div class="card" style="border-left: 4px solid var(--color-success);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
+      <h2>Cloudflare Clearance Session Cookie</h2>
+      <span class="badge {% if current_cookies %}badge-success{% else %}badge-warning{% endif %}">
+        {% if current_cookies %}Active (Cookie Configured){% else %}No Cookie (Cloudflare Restricted){% endif %}
+      </span>
+    </div>
+    <p class="text-muted" style="margin-bottom: var(--space-3); font-size: var(--font-size-sm);">
+      To crawl live <code>audiovideo.lt</code> pages without Cloudflare 403 blocks, visit the site in Chrome/Edge, open DevTools (F12) &rarr; Application &rarr; Cookies, and paste the <code>cf_clearance</code> value here. Or run <code>python scraper/get_cookie.py</code> in your terminal.
+    </p>
+    <form action="/dashboard/settings/cookies" method="POST" style="display: flex; gap: var(--space-3); align-items: flex-end; flex-wrap: wrap;">
+      <div style="flex-grow: 1; max-width: 600px;">
+        <label style="display: block; font-weight: 600; margin-bottom: var(--space-1);">Session / Clearance Cookie</label>
+        <input type="text" name="cookies" class="input-text" placeholder="cf_clearance=your_token_value_here" value="{{ current_cookies }}" style="width: 100%;">
+      </div>
+      <button type="submit" class="btn btn-primary">Save Cookie</button>
+      {% if current_cookies %}
+      <button type="submit" name="cookies" value="" class="btn btn-secondary">Clear</button>
+      {% endif %}
+    </form>
+  </div>
+
   <!-- Start New Job Card -->
   <div class="card">
     <h2>Start a New Crawl Job</h2>
