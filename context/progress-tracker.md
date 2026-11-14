@@ -56,6 +56,8 @@ Update this file after every meaningful implementation or planning change. Recor
 - **Job Execution, Dispatcher & Scrapy / Celery Integration**:
   - `JobDispatcher` in `scraper/app/services/dispatcher.py` handles job scheduling: dispatches to Celery when Redis is available, or falls back to in-process background worker execution for standalone local testing.
   - Manual operator controls added to Dashboard UI: "Process Batch Now" and "Run in Background".
+  - `RawStore` in `scraper/app/services/raw_store.py`: Durable raw HTML snapshot caching in `data/raw/` before parsing. Checks disk cache first before hitting network, enabling replayability and offline crawling.
+  - Ingest saved HTML: Dashboard upload form and API (`/api/v1/scraping/ingest-html`) to ingest saved browser pages and offline fixtures.
   - `JobRunner` in `scraper/app/services/job_runner.py` for batch processing of claimed URLs.
   - Celery app and tasks in `scraper/app/tasks/` for background asynchronous processing.
   - Scrapy spider `AudiovideoSpider` and `DatabasePipeline` in `scraper/app/crawler/`.
