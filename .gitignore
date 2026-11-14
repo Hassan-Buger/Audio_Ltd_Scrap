@@ -32,6 +32,9 @@ scraper/exports/*.json
 scraper/reports/*
 !scraper/reports/.gitkeep
 !scraper/exports/.gitkeep
+scraper/data/raw/*
+!scraper/data/raw/.gitkeep
+!scraper/data/fixtures/*
 
 # IDE & OS files
 .vscode/

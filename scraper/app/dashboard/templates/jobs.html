@@ -31,6 +31,25 @@
     </form>
   </div>
 
+  <!-- Ingest Saved HTML Page Card -->
+  <div class="card" style="border-left: 4px solid var(--color-primary);">
+    <h2>Ingest Saved HTML Page (Offline / Pre-Saved Snapshot)</h2>
+    <p class="text-muted" style="margin-bottom: var(--space-3); font-size: var(--font-size-sm);">
+      Upload a saved HTML page from your browser (e.g. Chrome <code>Ctrl+S</code> &rarr; "Webpage, HTML Only"). The raw HTML is saved to disk first and parsed immediately into products and categories.
+    </p>
+    <form action="/dashboard/jobs/ingest-html" method="POST" enctype="multipart/form-data" style="display: flex; gap: var(--space-4); align-items: flex-end; flex-wrap: wrap;">
+      <div>
+        <label style="display: block; font-weight: 600; margin-bottom: var(--space-1);">Target URL</label>
+        <input type="text" name="url" class="input-text" placeholder="https://www.audiovideo.lt/prod-a.html" required style="width: 380px;">
+      </div>
+      <div>
+        <label style="display: block; font-weight: 600; margin-bottom: var(--space-1);">HTML File (.html / .htm)</label>
+        <input type="file" name="file" accept=".html,.htm" required class="input-text">
+      </div>
+      <button type="submit" class="btn btn-secondary">Upload & Ingest Snapshot</button>
+    </form>
+  </div>
+
   <!-- Job List -->
   <div class="card">
     <h2>Job History</h2>

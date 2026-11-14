@@ -14,12 +14,20 @@ from app.database.repositories.manufacturer_repo import ManufacturerRepository
 from app.services.discovery import init_job_seeds
 from app.services.coverage import get_overview_report
 from app.services.dispatcher import JobDispatcher
+from app.services.raw_store import raw_store
+from app.services.job_runner import JobRunner
 
 router = APIRouter(prefix="/scraping", tags=["Scraping Control"])
 
 
 class URLListPayload(BaseModel):
     urls: List[str]
+
+
+class HTMLIngestPayload(BaseModel):
+    url: str
+    html: str
+    final_url: Optional[str] = None
 
 
 @router.post("/start", response_model=APIResponse[dict], status_code=status.HTTP_202_ACCEPTED)
@@ -131,6 +139,27 @@ def start_urls_scraping(
         success=True,
         message=f"Custom URLs scraping queued ({enqueued} valid URLs enqueued)",
         data={"job_id": job.id, "enqueued_count": enqueued}
+    )
+
+
+@router.post("/ingest-html", response_model=APIResponse[dict], status_code=status.HTTP_201_CREATED)
+def ingest_html_payload(
+    payload: HTMLIngestPayload,
+    db: Session = Depends(get_db),
+    _: str = Depends(verify_api_key)
+):
+    """Ingest and cache raw HTML for a URL, then immediately parse it into the database."""
+    raw_store.save(payload.url, payload.html, status_code=200, final_url=payload.final_url)
+    job = JobRepository.create_job(db, scope=JobScope.CUSTOM_URLS, config={"source": "api_html_ingest"})
+    crawl_url = URLRepository.enqueue_url(db, job.id, payload.url)
+    db.commit()
+    if crawl_url:
+        JobRunner.process_url(db, job.id, crawl_url)
+        db.commit()
+    return APIResponse(
+        success=True,
+        message=f"Raw HTML snapshot saved and parsed for '{payload.url}'",
+        data={"url": payload.url, "job_id": job.id}
     )
 
 

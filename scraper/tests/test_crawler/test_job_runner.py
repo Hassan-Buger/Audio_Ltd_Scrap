@@ -18,7 +18,7 @@ def test_job_runner_handles_cloudflare_challenge_as_inaccessible(db):
     mock_resp.text = "<!DOCTYPE html><html><title>Just a moment...</title>challenges.cloudflare.com</html>"
     mock_resp.headers = {"Cf-Mitigated": "challenge"}
 
-    with patch("httpx.Client.get", return_value=mock_resp):
+    with patch("app.services.raw_store.raw_store.load", return_value=None), patch("httpx.Client.get", return_value=mock_resp):
         res = JobRunner.process_url(db, job.id, u)
         db.commit()
 
@@ -47,7 +47,7 @@ def test_job_runner_extracts_and_persists_product_on_200(db, sample_product_html
     mock_resp.url = "https://www.audiovideo.lt/hertz-ml-700-set-midrange"
     mock_resp.headers = {"Content-Type": "text/html; charset=UTF-8"}
 
-    with patch("httpx.Client.get", return_value=mock_resp):
+    with patch("app.services.raw_store.raw_store.load", return_value=None), patch("httpx.Client.get", return_value=mock_resp):
         res = JobRunner.process_url(db, job.id, u)
         db.commit()
 

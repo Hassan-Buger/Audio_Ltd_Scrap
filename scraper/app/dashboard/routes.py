@@ -1,7 +1,7 @@
 """Server-rendered dashboard routes using Jinja2 templates and HTMX."""
 import os
 from typing import Optional
-from fastapi import APIRouter, Depends, Request, Form, Query, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, Request, Form, Query, HTTPException, status, BackgroundTasks, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -21,6 +21,7 @@ from app.services.coverage import (
 from app.services.discovery import init_job_seeds
 from app.services.job_runner import JobRunner
 from app.services.dispatcher import JobDispatcher
+from app.services.raw_store import raw_store
 
 templates_dir = os.path.join(os.path.dirname(__file__), "templates")
 templates = Jinja2Templates(directory=templates_dir)
@@ -74,6 +75,24 @@ def dashboard_start_job(
     init_job_seeds(db, job.id, custom_seeds=custom_seeds)
     db.commit()
     JobDispatcher.dispatch_job(job.id, background_tasks=background_tasks)
+    return RedirectResponse(url=f"/dashboard/jobs/{job.id}", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/jobs/ingest-html")
+def dashboard_ingest_html(
+    url: str = Form(...),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """Ingest a saved HTML file from disk or browser, cache it in RawStore, and parse it immediately."""
+    content = file.file.read().decode("utf-8", errors="replace")
+    raw_store.save(url.strip(), content, status_code=200)
+    job = JobRepository.create_job(db, scope=JobScope.CUSTOM_URLS, config={"source": "manual_html_upload"})
+    crawl_url = URLRepository.enqueue_url(db, job.id, url.strip())
+    db.commit()
+    if crawl_url:
+        JobRunner.process_url(db, job.id, crawl_url)
+        db.commit()
     return RedirectResponse(url=f"/dashboard/jobs/{job.id}", status_code=status.HTTP_303_SEE_OTHER)
 
 

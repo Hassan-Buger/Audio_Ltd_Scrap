@@ -74,19 +74,21 @@ def classify_url(url: str) -> URLType:
     if "p" in query and query["p"].isdigit():
         return URLType.PAGINATION
 
+    # Product pages on Magento / e-commerce end with .html
+    if path.endswith(".html") or ".html" in path:
+        return URLType.PRODUCT
+
     # Multi-segment paths typically represent category or subcategory
     segments = [s for s in path.split("/") if s]
     if len(segments) > 1:
-        # If last segment ends with an obvious product extension or slug
-        # On audiovideo.lt, categories have slugs like 'automobiliu-garso-aparatura/garso-izoliacija'
+        if segments[-1].endswith(".html"):
+            return URLType.PRODUCT
         return URLType.CATEGORY
 
     if len(segments) == 1:
         # Single segment can be a root category or a product URL
-        # For instance: 'garso-aparatura' vs 'hertz-ml-700-set-midrange'
         slug = segments[0]
-        # Products usually contain model numbers, multiple dashes, or brand names
-        if any(char.isdigit() for char in slug) or slug.count("-") >= 3:
+        if slug.endswith(".html") or slug.startswith("prod-") or any(char.isdigit() for char in slug) or slug.count("-") >= 2:
             return URLType.PRODUCT
         return URLType.CATEGORY
 
