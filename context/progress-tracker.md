@@ -53,11 +53,13 @@ Update this file after every meaningful implementation or planning change. Recor
   - `ProductRepository`: Deduplication using EAN first, then SKU + Brand, then Canonical URL. Product variants are protected against unsafe merging. Full discovery provenance and category relationships retained.
   - `CategoryRepository`, `ManufacturerRepository`, `JobRepository`.
 
-- **Job Execution & Scrapy / Celery Integration**:
+- **Job Execution, Dispatcher & Scrapy / Celery Integration**:
+  - `JobDispatcher` in `scraper/app/services/dispatcher.py` handles job scheduling: dispatches to Celery when Redis is available, or falls back to in-process background worker execution for standalone local testing.
+  - Manual operator controls added to Dashboard UI: "Process Batch Now" and "Run in Background".
   - `JobRunner` in `scraper/app/services/job_runner.py` for batch processing of claimed URLs.
   - Celery app and tasks in `scraper/app/tasks/` for background asynchronous processing.
   - Scrapy spider `AudiovideoSpider` and `DatabasePipeline` in `scraper/app/crawler/`.
-  - Playwright fallback manager in `scraper/app/browser/playwright_manager.py`.
+  - Playwright synchronous & asynchronous browser manager in `scraper/app/browser/playwright_manager.py` with Chromium binaries installed. Live inspection confirmed Cloudflare Managed Challenge ("Luktelėkite...") returning HTTP 403, properly logged as `inaccessible` / `ACCESS_RESTRICTED`.
 
 - **Complete Functional REST API (`/api/v1/`)**:
   - `Health & System`: `/api/v1/health`, `/api/v1/health/ready`, `/api/v1/system/status`, `/api/v1/system/stats`, `/health`, `/ready`
