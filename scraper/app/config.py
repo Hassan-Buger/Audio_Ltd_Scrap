@@ -1,5 +1,5 @@
 """Application configuration using Pydantic Settings."""
-from typing import List, Union
+from typing import List, Union, Optional
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -35,7 +35,11 @@ class Settings(BaseSettings):
     TARGET_ALLOWED_HOSTS: Union[str, List[str]] = ["www.audiovideo.lt", "audiovideo.lt"]
     SCRAPER_USER_AGENT: str = (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    )
+    SCRAPER_COOKIES: Optional[str] = Field(
+        default=None,
+        description="Optional session or cf_clearance cookies obtained from an authorized human browser session."
     )
     CRAWL_CONCURRENCY: int = 2
     CRAWL_DOWNLOAD_DELAY: float = 2.0

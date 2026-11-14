@@ -31,6 +31,8 @@ class JobRunner:
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "lt,en-US;q=0.7,en;q=0.3",
         }
+        if settings.SCRAPER_COOKIES:
+            headers["Cookie"] = settings.SCRAPER_COOKIES
 
         try:
             with httpx.Client(timeout=15.0, follow_redirects=True) as client:
