@@ -81,8 +81,14 @@ Update this file after every meaningful implementation or planning change. Recor
   - Responsive web dashboard using design tokens from `context/ui-context.md`.
   - Pages: Overview, Scraping Jobs, Job Details, Products catalogue, Product details, Categories tree, Failures & Retries, Reports & Exports.
 
-- **Automated Test Suite**:
-  - 20 automated tests passing with Pytest covering extraction, deduplication, frontier lease mechanics, all API routers, and dashboard routes.
+- **Automated Test Suite & End-to-End Localhost Verification**:
+  - 20/20 unit tests passing with Pytest covering extraction, normalizers, deduplication, frontier lease mechanics, API routers, and dashboard routes.
+  - 25/25 checks passed (100%) in comprehensive end-to-end localhost test suite (`scraper/e2e_localhost_test.py`) against live running server on `http://localhost:8000`:
+    - Health & readiness endpoints (`/health`, `/ready`, `/api/v1/health`, `/api/v1/health/ready`, `/api/v1/system/status`, `/api/v1/system/stats`).
+    - Operator Dashboard routes (`/dashboard`, `/dashboard/jobs`, `/dashboard/products`, `/dashboard/categories`, `/dashboard/failures`, `/dashboard/reports`, `/docs`, `/static/css/styles.css`).
+    - Scraping control & ingestion (`POST /dashboard/settings/cookies`, `POST /api/v1/scraping/ingest-html`, `POST /api/v1/scraping/start`).
+    - Catalog & search queries (`GET /api/v1/products`, `GET /api/v1/products/sku/E2E-TEST-001`, `GET /api/v1/search/products?q=Audison`).
+    - Data exports & reporting (`/api/v1/exports/products/csv`, `/api/v1/exports/products/json`, `/api/v1/reports/overview`, `/api/v1/reports/coverage`, `/api/v1/reports/completeness`).
 
 ## In Progress
 
