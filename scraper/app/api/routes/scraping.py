@@ -1,9 +1,13 @@
 """Scraping control and dispatch API endpoints."""
+from pathlib import Path
 from typing import List, Optional
 from urllib.parse import quote_plus
+import httpx
+from bs4 import BeautifulSoup
 from fastapi import APIRouter, Depends, Query, HTTPException, status, BackgroundTasks
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from app.config import settings
 from app.api.dependencies import get_db, verify_api_key
 from app.schemas.common import APIResponse
 from app.schemas.job import JobScope, JobStatus, CrawlJobResponse, CrawlJobCreate
@@ -11,6 +15,10 @@ from app.database.repositories.job_repo import JobRepository
 from app.database.repositories.url_repo import URLRepository
 from app.database.repositories.category_repo import CategoryRepository
 from app.database.repositories.manufacturer_repo import ManufacturerRepository
+from app.database.repositories.product_repo import ProductRepository
+from app.extraction.products import extract_product_detail
+from app.extraction.categories import extract_category_tree, extract_listing_products
+from app.extraction.pagination import extract_pagination
 from app.services.discovery import init_job_seeds
 from app.services.coverage import get_overview_report
 from app.services.dispatcher import JobDispatcher
@@ -28,6 +36,13 @@ class HTMLIngestPayload(BaseModel):
     url: str
     html: str
     final_url: Optional[str] = None
+
+
+class SnapshotAndScrapePayload(BaseModel):
+    url: str = Field(..., description="Target Audiovideo.lt URL", json_schema_extra={"example": "https://www.audiovideo.lt/automobiliu-garso-aparatura/garso-izoliacija/standartplast-stp-black-silver-bulk-pack.html"})
+    html_content: Optional[str] = Field(None, description="Optional raw HTML content. If supplied, saves directly to disk snapshot and parses without network call.", json_schema_extra={"example": None})
+    force_refresh: bool = Field(False, description="If True, bypasses local disk snapshot cache and performs new fetch/save.")
+
 
 
 @router.post("/start", response_model=APIResponse[dict], status_code=status.HTTP_202_ACCEPTED)
@@ -161,6 +176,193 @@ def ingest_html_payload(
         message=f"Raw HTML snapshot saved and parsed for '{payload.url}'",
         data={"url": payload.url, "job_id": job.id}
     )
+
+
+@router.post(
+    "/snapshot-and-scrape",
+    response_model=APIResponse[dict],
+    status_code=status.HTTP_200_OK,
+    summary="Save HTML snapshot to disk and scrape immediately",
+    description="Saves a raw HTML page snapshot to disk (data/raw/), then parses and extracts product or category data into the database. Pure backend execution."
+)
+def snapshot_and_scrape(
+    payload: SnapshotAndScrapePayload,
+    db: Session = Depends(get_db),
+    _: str = Depends(verify_api_key)
+):
+    url = payload.url.strip()
+    html = None
+    effective_url = url
+    is_cached = False
+    raw_path = None
+
+    # Step 1: Save HTML Page to Disk (Snapshot Store)
+    if payload.html_content and payload.html_content.strip():
+        html = payload.html_content.strip()
+        raw_path = raw_store.save(url, html, status_code=200)
+    else:
+        # Check disk snapshot cache unless force_refresh
+        if not payload.force_refresh and raw_store.has(url):
+            cached = raw_store.load(url)
+            if cached and cached.get("text"):
+                html = cached["text"]
+                effective_url = cached.get("final_url", url)
+                is_cached = True
+                raw_path = raw_store.root / raw_store._hash(url)
+                raw_path = raw_path.with_suffix(".html")
+
+        if not html:
+            # Fetch from live network
+            headers = {
+                "User-Agent": settings.SCRAPER_USER_AGENT,
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "lt,en-US;q=0.7,en;q=0.3",
+            }
+            cookie_val = settings.SCRAPER_COOKIES
+            env_p = Path(__file__).resolve().parent.parent.parent / ".env"
+            if env_p.exists():
+                for line in env_p.read_text(encoding="utf-8").splitlines():
+                    if line.startswith("SCRAPER_COOKIES="):
+                        c = line.split("=", 1)[1].strip()
+                        if c:
+                            cookie_val = c
+                        break
+            if cookie_val:
+                headers["Cookie"] = cookie_val
+
+            try:
+                with httpx.Client(timeout=20.0, follow_redirects=True) as client:
+                    resp = client.get(url, headers=headers)
+            except Exception as e:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail={"code": "NETWORK_FETCH_ERROR", "message": f"Failed to fetch {url}: {e}"}
+                )
+
+            is_cf = (
+                resp.status_code == 403 or
+                "challenges.cloudflare.com" in resp.text or
+                "Cf-Mitigated" in resp.headers or
+                "Luktelėkite..." in resp.text or
+                "Just a moment..." in resp.text
+            )
+            if is_cf:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail={
+                        "code": "ACCESS_RESTRICTED",
+                        "message": "Cloudflare Bot Management challenge detected on live URL.",
+                        "resolution": "Supply 'html_content' directly in this payload (Save HTML page as .html in browser, then pass content here), or configure SCRAPER_COOKIES."
+                    }
+                )
+
+            html = resp.text
+            effective_url = str(resp.url)
+            raw_path = raw_store.save(url, html, status_code=resp.status_code, final_url=effective_url)
+
+    # Step 2: Parse and Scrape the Saved HTML Page
+    soup = BeautifulSoup(html, "lxml")
+    is_product = (
+        url.endswith(".html") or
+        bool(soup.find("script", type="application/ld+json", string=lambda s: s and '"Product"' in s)) or
+        bool(soup.find(attrs={"itemtype": lambda v: v and "Product" in v})) or
+        bool(soup.select_one(".product-info-main"))
+    )
+
+    if is_product:
+        prod_create = extract_product_detail(html, effective_url)
+        if not prod_create or not prod_create.title:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"code": "PARSE_ERROR", "message": "Could not extract product details from saved HTML."}
+            )
+
+        prod, is_new = ProductRepository.upsert_product(db, prod_create)
+        db.commit()
+        db.refresh(prod)
+
+        return APIResponse(
+            success=True,
+            message="HTML snapshot saved and product extracted successfully",
+            data={
+                "url": url,
+                "effective_url": effective_url,
+                "page_type": "product",
+                "snapshot_saved": True,
+                "snapshot_file": str(raw_path) if raw_path else None,
+                "snapshot_size_bytes": len(html),
+                "is_cached_replay": is_cached,
+                "is_new_product": is_new,
+                "product": {
+                    "id": prod.id,
+                    "title": prod.title,
+                    "sku": prod.sku,
+                    "ean": prod.ean,
+                    "model": prod.model,
+                    "brand": prod.brand_name,
+                    "price": float(prod.price) if prod.price else None,
+                    "currency": prod.currency,
+                    "availability": prod.availability,
+                    "in_stock": prod.in_stock,
+                    "canonical_url": prod.canonical_url,
+                    "images_count": len(prod.images) if prod.images else 0,
+                    "images": prod.images[:5] if prod.images else [],
+                    "specifications_count": len(prod.specifications),
+                    "specifications": [
+                        {"label": s.label, "value": s.value, "unit": s.unit}
+                        for s in prod.specifications
+                    ]
+                }
+            }
+        )
+    else:
+        # Category or listing page
+        subcategories = extract_category_tree(soup, effective_url)
+        for cat_create in subcategories:
+            CategoryRepository.upsert_category(db, cat_create)
+
+        curr_p, total_p, page_urls = extract_pagination(soup, effective_url)
+        prod_urls = extract_listing_products(soup, effective_url)
+        db.commit()
+
+        return APIResponse(
+            success=True,
+            message="HTML snapshot saved and category/listing extracted successfully",
+            data={
+                "url": url,
+                "effective_url": effective_url,
+                "page_type": "category_listing",
+                "snapshot_saved": True,
+                "snapshot_file": str(raw_path) if raw_path else None,
+                "snapshot_size_bytes": len(html),
+                "is_cached_replay": is_cached,
+                "subcategories_found": len(subcategories),
+                "products_found_count": len(prod_urls),
+                "product_links": prod_urls[:50],
+                "pagination": {
+                    "current_page": curr_p,
+                    "total_pages": total_p,
+                    "next_page_urls": page_urls
+                }
+            }
+        )
+
+
+@router.get(
+    "/snapshots",
+    response_model=APIResponse[List[dict]],
+    summary="List all saved raw HTML page snapshots",
+    description="Inspect all raw HTML pages saved on disk in the snapshot store."
+)
+def list_html_snapshots():
+    """List all saved raw HTML page snapshots on disk."""
+    items = raw_store.list_snapshots()
+    return APIResponse(
+        success=True,
+        message=f"Retrieved {len(items)} saved HTML snapshots",
+        data=items
+    )
+
 
 
 @router.post("/pause/{job_id}", response_model=APIResponse[dict])

@@ -60,36 +60,52 @@ def capture_cf_cookie():
         except Exception as e:
             print(f"Navigation notice: {e}")
 
-        clearance_cookie = None
+        all_cookies = []
+        is_cleared = False
+        challenge_titles = ["luktelėkite...", "just a moment...", "attention required! | cloudflare"]
+
+        print("Browser is open. If you see a verification box ('Verify you are human'), click it.")
+        print("Waiting for page to redirect to the store...\n")
+
         for i in range(120):
+            time.sleep(1)
             try:
+                title = page.title().strip().lower()
                 cookies = context.cookies("https://www.audiovideo.lt/")
-                for c in cookies:
-                    if c["name"] == "cf_clearance":
-                        clearance_cookie = c["value"]
-                        break
+                has_clearance = any(c["name"] == "cf_clearance" for c in cookies)
+
+                # Challenge is cleared once we have cookies AND the title is no longer a Cloudflare challenge interstitial
+                if title and not any(ct in title for ct in challenge_titles) and (has_clearance or len(cookies) >= 2):
+                    all_cookies = cookies
+                    is_cleared = True
+                    print(f"\n[SUCCESS] Page loaded store: '{page.title()}' (URL: {page.url})")
+                    break
+                elif i % 5 == 0:
+                    print(f"  [{i}s] Waiting for verification... (Page title: '{page.title()}')")
             except Exception:
                 pass
 
-            if clearance_cookie:
-                break
-            time.sleep(1)
-
         try:
+            # Short wait so any post-navigation cookies settle
+            time.sleep(2)
+            if not all_cookies:
+                all_cookies = context.cookies("https://www.audiovideo.lt/")
             browser.close()
         except Exception:
             pass
 
-        if clearance_cookie:
-            print("\n[SUCCESS] cf_clearance cookie captured!")
-            cookie_str = f"cf_clearance={clearance_cookie}"
-            print(f"Token: {cookie_str[:40]}...")
+        if is_cleared and all_cookies:
+            # Build full cookie string (cf_clearance + session cookies)
+            cookie_str = "; ".join(f"{c['name']}={c['value']}" for c in all_cookies)
+            print("\n[SUCCESS] Cloudflare clearance session cookies captured!")
+            print(f"Cookies: {len(all_cookies)} cookie(s) captured.")
+            print(f"Token snippet: {cookie_str[:60]}...")
 
             update_env_cookie(cookie_str)
             print(f"[SAVED] Updated SCRAPER_COOKIES in {ENV_PATH}")
             return cookie_str
         else:
-            print("\n[TIMEOUT] cf_clearance cookie was not detected within 120 seconds.")
+            print("\n[TIMEOUT] Verification was not completed within 120 seconds.")
             return None
 
 

@@ -82,7 +82,11 @@ Update this file after every meaningful implementation or planning change. Recor
   - Pages: Overview, Scraping Jobs, Job Details, Products catalogue, Product details, Categories tree, Failures & Retries, Reports & Exports.
 
 - **Automated Test Suite & End-to-End Localhost Verification**:
-  - 20/20 unit tests passing with Pytest covering extraction, normalizers, deduplication, frontier lease mechanics, API routers, and dashboard routes.
+  - 21/21 unit tests passing with Pytest covering snapshot-and-scrape backend API, extraction, normalizers, deduplication, frontier lease mechanics, API routers, and dashboard routes.
+  - Dedicated Snapshot-First Backend API implemented (`POST /api/v1/scraping/snapshot-and-scrape` & `GET /api/v1/scraping/snapshots`):
+    - Saves raw HTML page snapshot to disk (`data/raw/<sha256>.html` and `<sha256>.json`) before parsing.
+    - Scrapes product details, specifications, price, currency, availability, and images directly into database.
+    - Returns full parsed product model directly in the Swagger/REST response for pure backend operation without frontend dependencies.
   - 25/25 checks passed (100%) in comprehensive end-to-end localhost test suite (`scraper/e2e_localhost_test.py`) against live running server on `http://localhost:8000`:
     - Health & readiness endpoints (`/health`, `/ready`, `/api/v1/health`, `/api/v1/health/ready`, `/api/v1/system/status`, `/api/v1/system/stats`).
     - Operator Dashboard routes (`/dashboard`, `/dashboard/jobs`, `/dashboard/products`, `/dashboard/categories`, `/dashboard/failures`, `/dashboard/reports`, `/docs`, `/static/css/styles.css`).

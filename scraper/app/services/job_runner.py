@@ -1,5 +1,6 @@
 """Crawl job execution engine for processing frontier URLs."""
 import logging
+from pathlib import Path
 from typing import Dict, Any, Optional
 import httpx
 from bs4 import BeautifulSoup
@@ -42,13 +43,25 @@ class JobRunner:
             http_status = cached.get("status", 200)
             logger.info(f"Loaded {url_record.url} from raw HTML snapshot cache")
         else:
+            # Dynamically read latest cookies from settings or .env file
+            cookie_val = settings.SCRAPER_COOKIES
+            env_p = Path(__file__).resolve().parent.parent.parent / ".env"
+            if env_p.exists():
+                for line in env_p.read_text(encoding="utf-8").splitlines():
+                    if line.startswith("SCRAPER_COOKIES="):
+                        c_part = line.split("=", 1)[1].strip()
+                        if c_part:
+                            cookie_val = c_part
+                            settings.SCRAPER_COOKIES = c_part
+                        break
+
             headers = {
                 "User-Agent": settings.SCRAPER_USER_AGENT,
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                 "Accept-Language": "lt,en-US;q=0.7,en;q=0.3",
             }
-            if settings.SCRAPER_COOKIES:
-                headers["Cookie"] = settings.SCRAPER_COOKIES
+            if cookie_val:
+                headers["Cookie"] = cookie_val
 
             try:
                 with httpx.Client(timeout=15.0, follow_redirects=True) as client:

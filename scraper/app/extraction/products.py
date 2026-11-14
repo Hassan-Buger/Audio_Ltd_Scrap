@@ -99,10 +99,18 @@ def _extract_from_json_ld(soup: BeautifulSoup, source_url: str) -> Optional[Dict
                     
                     price_val = None
                     currency = "EUR"
+                    availability = None
+                    in_stock = None
                     if isinstance(offers, dict):
                         raw_p = offers.get("price")
                         if raw_p is not None:
                             price_val, currency = parse_price(str(raw_p))
+                        availability = offers.get("availability")
+                        if availability:
+                            if "InStock" in availability:
+                                in_stock = True
+                            elif "OutOfStock" in availability:
+                                in_stock = False
                     
                     brand = item.get("brand")
                     brand_name = brand.get("name") if isinstance(brand, dict) else str(brand) if brand else None
@@ -119,6 +127,8 @@ def _extract_from_json_ld(soup: BeautifulSoup, source_url: str) -> Optional[Dict
                         "brand_name": clean_text(brand_name),
                         "price": price_val,
                         "currency": currency,
+                        "availability": availability,
+                        "in_stock": in_stock,
                         "description": clean_text(item.get("description")),
                         "images": [urljoin(source_url, img) for img in images if img],
                         "canonical_url": item.get("url")
