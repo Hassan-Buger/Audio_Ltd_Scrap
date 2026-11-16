@@ -132,7 +132,7 @@ class JobRunner:
                 if prod_create:
                     prod_create.crawl_job_id = job_id
                     prod, is_new = ProductRepository.upsert_product(db, prod_create)
-                    if is_new:
+                    if prod:
                         JobRepository.increment_product_count(db, job_id, 1)
 
             else:
