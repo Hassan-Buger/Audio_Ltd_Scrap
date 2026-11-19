@@ -101,16 +101,17 @@ Update this file after every meaningful implementation or planning change. Recor
 
 ## In Progress
 
-- Ready for review and deployment to Railway / production environment.
+- Deploying latest code to Railway environment (waiting for git push to GitHub remote).
 
 ## Next Up
 
-- Connect Railway PostgreSQL and Redis production connection strings.
-- Run `alembic upgrade head` in Railway deployment pipeline.
-- Start web service (`uvicorn app.main:app --host 0.0.0.0 --port 8000`) and worker (`celery -A app.tasks.celery_app worker -c 2`).
+- Run `git push origin main` to push the 8 local commits to GitHub so Railway auto-triggers the build.
+- Verify Railway deployment health endpoint at `<your-railway-domain>/health`.
+- Test Swagger UI at `<your-railway-domain>/docs` and execute `snapshot-and-scrape`.
 
 ## Architecture Decisions
 
 - Target-site access: Cloudflare challenge responses are categorized as `inaccessible` with error code `ACCESS_RESTRICTED`, maintaining strict adherence to anti-bot and security policies.
 - Database: SQLite default fallback for zero-dependency local testing/dev, PostgreSQL for Docker and Railway deployments.
+- Railway deployment: Dual-context Dockerfile and root `requirements.txt` / `railway.toml` implemented to ensure seamless builds whether Railway builds from repository root or `/scraper`. Automatic `postgres://` -> `postgresql://` conversion added to Pydantic settings for SQLAlchemy 2.0 compatibility with Railway's PostgreSQL plugin.
 - API structure: Modular routers versioned under `/api/v1/` with consistent JSON envelope schemas (`APIResponse[T]`, `PaginationMeta`, `APIErrorResponse`).
