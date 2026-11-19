@@ -4,7 +4,7 @@ from typing import List, Dict, Any, Optional
 from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 from app.schemas.category import CategoryCreate
-from .normalizers import clean_text
+from .normalizers import clean_text, parse_price
 
 
 def extract_breadcrumbs(soup: BeautifulSoup, base_url: str) -> List[Dict[str, str]]:
@@ -110,3 +110,76 @@ def extract_listing_products(soup: BeautifulSoup, base_url: str) -> List[str]:
                         product_urls.append(full)
 
     return product_urls
+
+
+def extract_category_description(soup: BeautifulSoup) -> Optional[str]:
+    """Extract category description text from category listing page."""
+    selectors = [
+        ".category-description.std",
+        ".category-description",
+        "#category-description",
+        '[itemprop="description"]',
+        ".category-view .std",
+    ]
+    for sel in selectors:
+        el = soup.select_one(sel)
+        if el:
+            txt = clean_text(el.get_text())
+            if txt and len(txt) >= 5:
+                return txt
+
+    meta_el = soup.select_one('meta[name="description"]') or soup.select_one('meta[property="og:description"]')
+    if meta_el and meta_el.get("content"):
+        txt = clean_text(meta_el["content"])
+        if txt and len(txt) >= 5:
+            return txt
+
+    return None
+
+
+def extract_listing_product_items(soup: BeautifulSoup, base_url: str) -> List[Dict[str, Any]]:
+    """
+    Extract structured product cards (title, url, price, image) directly from category listing.
+    """
+    items: List[Dict[str, Any]] = []
+    seen = set()
+
+    cards = soup.select(".products-grid .item, .category-products-grid .item, .products-list .item, .product-item, .item-product")
+    if not cards:
+        cards = soup.find_all(class_=lambda c: c and any(k in str(c).lower() for k in ["product-item", "product-card", "item"]))
+
+    for card in cards:
+        a = card.select_one(".product-name a, .product-item-link, a.title, h2 a, h3 a")
+        if not a:
+            a = card.find("a", href=True)
+        if not a or not a.has_attr("href"):
+            continue
+
+        full_url = urljoin(base_url, a["href"].strip())
+        if full_url in seen:
+            continue
+        seen.add(full_url)
+
+        title = clean_text(a.get_text()) or a.get("title") or ""
+        if not title:
+            continue
+
+        price_el = card.select_one(".price-box .price, .special-price .price, .regular-price .price, .price")
+        price_val, currency = parse_price(price_el.get_text()) if price_el else (None, "EUR")
+
+        img_el = card.find("img")
+        img_url = None
+        if img_el:
+            src = img_el.get("src") or img_el.get("data-src")
+            if src and not src.startswith("data:"):
+                img_url = urljoin(base_url, src.strip())
+
+        items.append({
+            "title": title,
+            "url": full_url,
+            "price": float(price_val) if price_val is not None else None,
+            "currency": currency,
+            "image": img_url
+        })
+
+    return items

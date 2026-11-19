@@ -82,8 +82,9 @@ class ProductRepository:
                 prod.model = data.model
             if data.brand_name and not prod.brand_name:
                 prod.brand_name = data.brand_name
-            if data.description and not prod.description:
-                prod.description = data.description
+            if data.description:
+                if not prod.description or len(data.description) > len(prod.description or ""):
+                    prod.description = data.description
             if data.images and not prod.images:
                 prod.images = data.images
 

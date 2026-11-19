@@ -17,7 +17,12 @@ from app.database.repositories.category_repo import CategoryRepository
 from app.database.repositories.manufacturer_repo import ManufacturerRepository
 from app.database.repositories.product_repo import ProductRepository
 from app.extraction.products import extract_product_detail
-from app.extraction.categories import extract_category_tree, extract_listing_products
+from app.extraction.categories import (
+    extract_category_tree,
+    extract_listing_products,
+    extract_category_description,
+    extract_listing_product_items
+)
 from app.extraction.pagination import extract_pagination
 from app.services.discovery import init_job_seeds
 from app.services.coverage import get_overview_report
@@ -304,6 +309,7 @@ def snapshot_and_scrape(
                     "currency": prod.currency,
                     "availability": prod.availability,
                     "in_stock": prod.in_stock,
+                    "description": prod.description,
                     "canonical_url": prod.canonical_url,
                     "images_count": len(prod.images) if prod.images else 0,
                     "images": prod.images[:5] if prod.images else [],
@@ -323,6 +329,8 @@ def snapshot_and_scrape(
 
         curr_p, total_p, page_urls = extract_pagination(soup, effective_url)
         prod_urls = extract_listing_products(soup, effective_url)
+        cat_desc = extract_category_description(soup)
+        listing_items = extract_listing_product_items(soup, effective_url)
         db.commit()
 
         return APIResponse(
@@ -336,8 +344,10 @@ def snapshot_and_scrape(
                 "snapshot_file": str(raw_path) if raw_path else None,
                 "snapshot_size_bytes": len(html),
                 "is_cached_replay": is_cached,
+                "category_description": cat_desc,
                 "subcategories_found": len(subcategories),
-                "products_found_count": len(prod_urls),
+                "products_found_count": len(listing_items) if listing_items else len(prod_urls),
+                "products": listing_items,
                 "product_links": prod_urls[:50],
                 "pagination": {
                     "current_page": curr_p,

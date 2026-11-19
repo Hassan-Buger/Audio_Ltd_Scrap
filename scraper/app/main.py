@@ -32,11 +32,23 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Audiovideo.lt Product Scraper & Operations API",
-    description="Production REST API and Operations Console for Audiovideo.lt product catalogue extraction.",
+    description="""
+### 🎧 Audiovideo.lt Operations & Scraping Engine
+
+#### 🔑 How to Authenticate in Swagger:
+To test protected endpoints (such as `/api/v1/scraping/*` and `/api/v1/jobs/*`):
+1. Click the **Authorize** button (green lock 🔓 at the top right of this page).
+2. Enter the Operator API Key:
+   ```text
+   test-operator-api-key-change-in-production
+   ```
+3. Click **Authorize** and then **Close**. All requests will now include the key automatically!
+""",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
+    swagger_ui_parameters={"persistAuthorization": True},
     lifespan=lifespan
 )
 

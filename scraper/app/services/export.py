@@ -27,7 +27,7 @@ class ExportService:
         headers = [
             "id", "title", "sku", "ean", "model", "brand_name",
             "price", "regular_price", "currency", "availability", "in_stock",
-            "canonical_url", "is_complete", "specifications_count"
+            "description", "canonical_url", "is_complete", "specifications_count"
         ]
         writer.writerow(headers)
         yield output.getvalue()
@@ -54,6 +54,7 @@ class ExportService:
                 p.currency,
                 p.availability or "",
                 "true" if p.in_stock else "false" if p.in_stock is False else "",
+                p.description or "",
                 p.canonical_url,
                 "true" if p.is_complete else "false",
                 len(p.specifications) if p.specifications else 0

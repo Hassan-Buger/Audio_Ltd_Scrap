@@ -53,7 +53,12 @@ def extract_product_detail(html_content: str, source_url: str) -> Optional[Produ
     if in_stock is None:
         in_stock = dom_in_stock
         
-    description = (product_data.get("description") if product_data else None) or dom_description
+    json_desc = clean_text(product_data.get("description")) if product_data else None
+    if json_desc and dom_description and len(dom_description) > len(json_desc) + 20:
+        description = dom_description
+    else:
+        description = json_desc or dom_description
+
     images = (product_data.get("images") if product_data else None) or dom_images or []
     canonical_url = (product_data.get("canonical_url") if product_data else None) or dom_canonical or source_url
     
@@ -239,10 +244,72 @@ def _extract_availability(soup: BeautifulSoup) -> tuple:
 
 
 def _extract_description(soup: BeautifulSoup) -> Optional[str]:
-    desc_el = soup.find(id=lambda i: i and any(k in str(i).lower() for k in ["description", "aprasymas"]))
-    if not desc_el:
-        desc_el = soup.find(class_=lambda c: c and any(k in str(c).lower() for k in ["product-description", "detailed-description", "overview"]))
-    return clean_text(desc_el.get_text()) if desc_el else None
+    """
+    Extract product description from HTML DOM using comprehensive e-commerce selectors.
+    Supports Magento 1 & 2, schema.org microdata, and standard semantic HTML.
+    """
+    selectors = [
+        # Schema.org microdata
+        '[itemprop="description"]',
+        # Magento 2 standard product description
+        '.product.attribute.description .value',
+        '.product.attribute.description',
+        '.product-attribute-description',
+        # Magento 1 standard tabs & description boxes
+        '#product_tabs_description_contents .std',
+        '#product_tabs_description_contents',
+        '.box-description .std',
+        '.box-description',
+        '.box-collateral.box-description',
+        # Standard description containers and IDs
+        '#description',
+        '#product-description',
+        '#tab-description',
+        'div[id*="description" i]',
+        'div[id*="aprasymas" i]',
+        'section[id*="description" i]',
+        # Class-based selectors
+        '.product-description',
+        '.product-details-description',
+        '.detailed-description',
+        '.product__description',
+        '.product-view .description',
+        '.product-info-main .description',
+        '.product-info-detailed .description',
+        # Short description fallbacks
+        '.short-description .std',
+        '.short-description',
+        '.product-short-description',
+        '.overview .product-description',
+        '.overview',
+        # Generic description class
+        '.description',
+        # Generic Magento .std container if inside main product view
+        '.product-view .std',
+        '.product-shop .std',
+    ]
+
+    for sel in selectors:
+        for el in soup.select(sel):
+            # Work on a clone to safely strip non-description elements
+            text_el = BeautifulSoup(str(el), "lxml")
+            for tag in text_el.find_all(["script", "style", "table", "button", "form"]):
+                tag.decompose()
+            cleaned = clean_text(text_el.get_text())
+            if cleaned and len(cleaned) >= 5:
+                # Exclude trivial standalone heading words
+                if cleaned.lower() not in ("aprašymas", "aprasymas", "description", "prekės aprašymas", "produkto aprašymas"):
+                    return cleaned
+
+    # Fallback to meta tags if no body description was found
+    for meta_sel in ['meta[property="og:description"]', 'meta[name="description"]']:
+        meta_el = soup.select_one(meta_sel)
+        if meta_el and meta_el.get("content"):
+            cleaned = clean_text(meta_el["content"])
+            if cleaned and len(cleaned) >= 5 and "audiovideo" not in cleaned.lower()[:30]:
+                return cleaned
+
+    return None
 
 
 def _extract_images(soup: BeautifulSoup, base_url: str) -> List[str]:

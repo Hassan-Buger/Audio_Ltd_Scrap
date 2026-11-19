@@ -72,6 +72,7 @@ def test_snapshot_and_scrape_with_html_content(client, auth_headers):
     assert prod["price"] == 55.00
     assert prod["currency"] == "EUR"
     assert prod["in_stock"] is True
+    assert prod["description"] == "Profesionali vibroizoliacinė medžiaga automobiliams."
     assert prod["specifications_count"] >= 2
 
     # 2. Verify snapshot appears in GET /api/v1/scraping/snapshots
@@ -81,3 +82,56 @@ def test_snapshot_and_scrape_with_html_content(client, auth_headers):
     assert len(snaps) >= 1
     found = any(s["url"] == payload["url"] for s in snaps)
     assert found is True
+
+
+def test_snapshot_and_scrape_category_listing(client, auth_headers):
+    category_html = """
+    <!DOCTYPE html>
+    <html lang="lt">
+    <head><title>Garso izoliacija - audiovideo.lt</title></head>
+    <body>
+      <div class="category-description std">
+        Aukščiausios kokybės automobilių garso ir vibro izoliacinės medžiagos.
+      </div>
+      <ul class="products-grid">
+        <li class="item">
+          <h2 class="product-name">
+            <a href="https://www.audiovideo.lt/item-1.html">BOOM 10 Akustinis porolonas</a>
+          </h2>
+          <div class="price-box"><span class="price">3.00 €</span></div>
+        </li>
+        <li class="item">
+          <h2 class="product-name">
+            <a href="https://www.audiovideo.lt/item-2.html">STP Black Silver 2mm</a>
+          </h2>
+          <div class="price-box"><span class="price">8.50 €</span></div>
+        </li>
+      </ul>
+      <div class="pages">
+        <ol class="pagination">
+          <li class="current">1</li>
+          <li><a href="https://www.audiovideo.lt/garso-izoliacija?p=2">2</a></li>
+        </ol>
+      </div>
+    </body>
+    </html>
+    """
+    payload = {
+        "url": "https://www.audiovideo.lt/automobiliu-garso-aparatura/garso-izoliacija",
+        "html_content": category_html,
+        "force_refresh": True
+    }
+    resp = client.post("/api/v1/scraping/snapshot-and-scrape", json=payload, headers=auth_headers)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["success"] is True
+    data = body["data"]
+
+    assert data["page_type"] == "category_listing"
+    assert data["category_description"] == "Aukščiausios kokybės automobilių garso ir vibro izoliacinės medžiagos."
+    assert data["products_found_count"] == 2
+    assert len(data["products"]) == 2
+    assert data["products"][0]["title"] == "BOOM 10 Akustinis porolonas"
+    assert data["products"][0]["price"] == 3.00
+    assert data["products"][1]["title"] == "STP Black Silver 2mm"
+    assert data["products"][1]["price"] == 8.50
