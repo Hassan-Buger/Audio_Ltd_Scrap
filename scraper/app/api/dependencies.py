@@ -13,14 +13,15 @@ bearer_scheme = HTTPBearer(auto_error=False, description="Bearer token")
 def verify_api_key(
     x_api_key: Optional[str] = Depends(api_key_header),
     bearer_auth: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
-    raw_header_key: Optional[str] = Header(None, alias="X-API-Key")
+    raw_header_key: Optional[str] = Header(None, alias="X-API-Key"),
+    api_key: Optional[str] = None
 ) -> str:
     """
     Enforce API key authentication on administrative and mutation endpoints.
-    Accepts X-API-Key header or Bearer token.
+    Accepts X-API-Key header, Bearer token, or query parameter api_key.
     Allows easy authorization via Swagger UI Authorize modal.
     """
-    token = x_api_key or raw_header_key
+    token = x_api_key or raw_header_key or api_key
     if not token and bearer_auth:
         token = bearer_auth.credentials
 
@@ -29,7 +30,10 @@ def verify_api_key(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={
                 "code": "UNAUTHORIZED",
-                "message": "Invalid or missing API key. Provide X-API-Key header or authenticate in Swagger."
+                "message": (
+                    f"Invalid or missing API key. Click the green 'Authorize' 🔓 button at the top of /docs "
+                    f"and enter: '{settings.API_KEY}' (or pass 'X-API-Key' header / '?api_key={settings.API_KEY}')."
+                )
             }
         )
     return token
