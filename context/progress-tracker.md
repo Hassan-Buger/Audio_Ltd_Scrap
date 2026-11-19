@@ -7,10 +7,11 @@ Update this file after every meaningful implementation or planning change. Recor
 - Phase 1 & 2: Context analysis and repository inspection completed.
 - Phase 3: Live reconnaissance performed on `https://www.audiovideo.lt/`.
 - Phase 4 - 15: Full application foundation, database models, durable frontier, extraction engines, complete REST API (`/api/v1/`), Jinja2 + HTMX operator dashboard, Docker / Railway setup, and Pytest test suite implemented inside `scraper/`.
+- Phase 16: Production readiness, description extraction fix, Swagger UI persistent authorization, and dual-mode authentication (header / query parameter) completed.
 
 ## Current Goal
 
-- Verification complete; all 20 automated tests passing across extraction, deduplication, URL frontier, API endpoints, and dashboard.
+- Production readiness and verification complete; all 24 automated tests passing across extraction, deduplication, URL frontier, API endpoints, snapshot store, and dashboard.
 
 ## Completed
 

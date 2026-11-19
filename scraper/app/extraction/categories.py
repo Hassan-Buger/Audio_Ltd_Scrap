@@ -179,7 +179,8 @@ def extract_listing_product_items(soup: BeautifulSoup, base_url: str) -> List[Di
             "url": full_url,
             "price": float(price_val) if price_val is not None else None,
             "currency": currency,
-            "image": img_url
+            "image": img_url,
+            "description": None  # Detailed description is extracted from product detail page
         })
 
     return items
