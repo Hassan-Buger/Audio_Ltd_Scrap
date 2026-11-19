@@ -34,6 +34,7 @@ scraper/reports/*
 !scraper/exports/.gitkeep
 scraper/data/raw/*
 !scraper/data/raw/.gitkeep
+scraper/data/incoming_*.html
 !scraper/data/fixtures/*
 
 # IDE & OS files

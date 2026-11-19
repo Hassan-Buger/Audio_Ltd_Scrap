@@ -52,6 +52,13 @@ class Settings(BaseSettings):
     TRANSLATION_ENABLED: bool = False
     TRANSLATION_PROVIDER: str = "none"
 
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def assemble_database_url(cls, v: Optional[str]) -> str:
+        if v and v.startswith("postgres://"):
+            return v.replace("postgres://", "postgresql://", 1)
+        return v or "sqlite:///./audiovideo.db"
+
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
