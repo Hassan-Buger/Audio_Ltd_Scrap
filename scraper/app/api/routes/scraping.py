@@ -4,7 +4,7 @@ from typing import List, Optional
 from urllib.parse import quote_plus
 import httpx
 from bs4 import BeautifulSoup
-from fastapi import APIRouter, Depends, Query, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, Query, HTTPException, status, BackgroundTasks, UploadFile, File, Form
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from app.config import settings
@@ -83,11 +83,13 @@ class SnapshotAndScrapePayload(BaseModel):
     model_config = {"json_schema_extra": {
         "example": {
             "url": "https://www.audiovideo.lt/automobiliu-garso-aparatura/garso-izoliacija/standartplast-stp-black-silver-bulk-pack.html",
+            "html_content": None,
             "force_refresh": False,
         },
         "examples": [
             {
                 "url": "https://www.audiovideo.lt/automobiliu-garso-aparatura/garso-izoliacija/standartplast-stp-black-silver-bulk-pack.html",
+                "html_content": None,
                 "force_refresh": False,
             }
         ]
@@ -401,6 +403,31 @@ def snapshot_and_scrape(
                 }
             }
         )
+
+
+@router.post(
+    "/upload-and-scrape",
+    response_model=APIResponse[dict],
+    status_code=status.HTTP_200_OK,
+    summary="Upload saved HTML file directly and scrape",
+    description="Select and upload a saved .html file directly from your computer with the file browser. Saves snapshot to disk and extracts all products into the database."
+)
+async def upload_and_scrape_file(
+    file: UploadFile = File(..., description="Select the saved .html file from your computer"),
+    url: str = Form("https://www.audiovideo.lt/catalogsearch/result/?cat=0&q=bass+habit", description="The original Audiovideo.lt URL"),
+    force_refresh: bool = Form(True, description="Force re-parsing if snapshot exists"),
+    db: Session = Depends(get_db),
+    _: str = Depends(verify_api_key)
+):
+    """Direct file upload endpoint for browser-saved HTML files."""
+    content_bytes = await file.read()
+    html_content = content_bytes.decode("utf-8", errors="ignore")
+    payload = SnapshotAndScrapePayload(
+        url=url,
+        html_content=html_content,
+        force_refresh=force_refresh
+    )
+    return snapshot_and_scrape(payload=payload, db=db, _=_)
 
 
 @router.get(
