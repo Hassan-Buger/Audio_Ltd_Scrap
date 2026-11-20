@@ -31,8 +31,8 @@ templates = Jinja2Templates(directory=templates_dir)
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 
-@router.get("", response_class=HTMLResponse)
-@router.get("/", response_class=HTMLResponse)
+@router.get("", response_class=HTMLResponse, include_in_schema=False)
+@router.get("/", response_class=HTMLResponse, include_in_schema=False)
 def dashboard_overview(request: Request, db: Session = Depends(get_db)):
     """Overview dashboard page."""
     overview = get_overview_report(db)
@@ -49,7 +49,7 @@ def dashboard_overview(request: Request, db: Session = Depends(get_db)):
     )
 
 
-@router.get("/jobs", response_class=HTMLResponse)
+@router.get("/jobs", response_class=HTMLResponse, include_in_schema=False)
 def dashboard_jobs(request: Request, db: Session = Depends(get_db)):
     """Scraping jobs management page."""
     jobs = JobRepository.list_jobs(db, skip=0, limit=50)
@@ -65,7 +65,7 @@ def dashboard_jobs(request: Request, db: Session = Depends(get_db)):
     )
 
 
-@router.post("/settings/cookies")
+@router.post("/settings/cookies", include_in_schema=False)
 def dashboard_update_cookies(cookies: str = Form(""), db: Session = Depends(get_db)):
     """Update active scraper clearance cookie."""
     clean_cookie = cookies.strip()
@@ -89,7 +89,7 @@ def dashboard_update_cookies(cookies: str = Form(""), db: Session = Depends(get_
     return RedirectResponse(url="/dashboard/jobs", status_code=status.HTTP_303_SEE_OTHER)
 
 
-@router.post("/jobs/start")
+@router.post("/jobs/start", include_in_schema=False)
 def dashboard_start_job(
     background_tasks: BackgroundTasks,
     scope: str = Form("full"),
@@ -105,7 +105,7 @@ def dashboard_start_job(
     return RedirectResponse(url=f"/dashboard/jobs/{job.id}", status_code=status.HTTP_303_SEE_OTHER)
 
 
-@router.post("/jobs/ingest-html")
+@router.post("/jobs/ingest-html", include_in_schema=False)
 def dashboard_ingest_html(
     url: str = Form(...),
     file: UploadFile = File(...),
@@ -123,21 +123,21 @@ def dashboard_ingest_html(
     return RedirectResponse(url=f"/dashboard/jobs/{job.id}", status_code=status.HTTP_303_SEE_OTHER)
 
 
-@router.post("/jobs/{job_id}/run-batch")
+@router.post("/jobs/{job_id}/run-batch", include_in_schema=False)
 def dashboard_run_batch(job_id: int, db: Session = Depends(get_db)):
     """Manually process one batch of URLs for immediate feedback."""
     JobRunner.run_job_batch(db, job_id=job_id, batch_size=10)
     return RedirectResponse(url=f"/dashboard/jobs/{job_id}", status_code=status.HTTP_303_SEE_OTHER)
 
 
-@router.post("/jobs/{job_id}/dispatch")
+@router.post("/jobs/{job_id}/dispatch", include_in_schema=False)
 def dashboard_dispatch_job(job_id: int, background_tasks: BackgroundTasks):
     """Trigger background execution for an existing queued or running job."""
     JobDispatcher.dispatch_job(job_id, background_tasks=background_tasks)
     return RedirectResponse(url=f"/dashboard/jobs/{job_id}", status_code=status.HTTP_303_SEE_OTHER)
 
 
-@router.get("/jobs/{job_id}", response_class=HTMLResponse)
+@router.get("/jobs/{job_id}", response_class=HTMLResponse, include_in_schema=False)
 def dashboard_job_detail(job_id: int, request: Request, db: Session = Depends(get_db)):
     """Inspect progress and URL breakdown of a job."""
     job = JobRepository.get_job(db, job_id)
@@ -158,28 +158,28 @@ def dashboard_job_detail(job_id: int, request: Request, db: Session = Depends(ge
     )
 
 
-@router.post("/jobs/{job_id}/pause")
+@router.post("/jobs/{job_id}/pause", include_in_schema=False)
 def dashboard_pause_job(job_id: int, db: Session = Depends(get_db)):
     JobRepository.update_status(db, job_id, JobStatus.PAUSED)
     db.commit()
     return RedirectResponse(url=f"/dashboard/jobs/{job_id}", status_code=status.HTTP_303_SEE_OTHER)
 
 
-@router.post("/jobs/{job_id}/resume")
+@router.post("/jobs/{job_id}/resume", include_in_schema=False)
 def dashboard_resume_job(job_id: int, db: Session = Depends(get_db)):
     JobRepository.update_status(db, job_id, JobStatus.RUNNING)
     db.commit()
     return RedirectResponse(url=f"/dashboard/jobs/{job_id}", status_code=status.HTTP_303_SEE_OTHER)
 
 
-@router.post("/jobs/{job_id}/cancel")
+@router.post("/jobs/{job_id}/cancel", include_in_schema=False)
 def dashboard_cancel_job(job_id: int, db: Session = Depends(get_db)):
     JobRepository.update_status(db, job_id, JobStatus.CANCELLED)
     db.commit()
     return RedirectResponse(url=f"/dashboard/jobs/{job_id}", status_code=status.HTTP_303_SEE_OTHER)
 
 
-@router.get("/products", response_class=HTMLResponse)
+@router.get("/products", response_class=HTMLResponse, include_in_schema=False)
 def dashboard_products(
     request: Request,
     page: int = Query(1, ge=1),
@@ -209,7 +209,7 @@ def dashboard_products(
     )
 
 
-@router.get("/products/{product_id}", response_class=HTMLResponse)
+@router.get("/products/{product_id}", response_class=HTMLResponse, include_in_schema=False)
 def dashboard_product_detail(product_id: int, request: Request, db: Session = Depends(get_db)):
     """View detailed product page with source language, translation, specs, and provenance."""
     prod = ProductRepository.get_by_id(db, product_id)
@@ -226,7 +226,7 @@ def dashboard_product_detail(product_id: int, request: Request, db: Session = De
     )
 
 
-@router.get("/categories", response_class=HTMLResponse)
+@router.get("/categories", response_class=HTMLResponse, include_in_schema=False)
 def dashboard_categories(request: Request, db: Session = Depends(get_db)):
     """Browse hierarchical category tree."""
     cats = CategoryRepository.list_categories(db, limit=200)
@@ -243,7 +243,7 @@ def dashboard_categories(request: Request, db: Session = Depends(get_db)):
     )
 
 
-@router.get("/failures", response_class=HTMLResponse)
+@router.get("/failures", response_class=HTMLResponse, include_in_schema=False)
 def dashboard_failures(request: Request, db: Session = Depends(get_db)):
     """View failed & inaccessible URLs."""
     from sqlalchemy import select
@@ -266,7 +266,7 @@ def dashboard_failures(request: Request, db: Session = Depends(get_db)):
     )
 
 
-@router.post("/failures/retry-all")
+@router.post("/failures/retry-all", include_in_schema=False)
 def dashboard_retry_all_failures(db: Session = Depends(get_db)):
     db.execute(
         update(CrawlURL)
@@ -277,7 +277,7 @@ def dashboard_retry_all_failures(db: Session = Depends(get_db)):
     return RedirectResponse(url="/dashboard/failures", status_code=status.HTTP_303_SEE_OTHER)
 
 
-@router.post("/failures/retry/{url_id}")
+@router.post("/failures/retry/{url_id}", include_in_schema=False)
 def dashboard_retry_single_url(url_id: int, db: Session = Depends(get_db)):
     url_rec = db.get(CrawlURL, url_id)
     if url_rec:
@@ -289,7 +289,7 @@ def dashboard_retry_single_url(url_id: int, db: Session = Depends(get_db)):
     return RedirectResponse(url="/dashboard/failures", status_code=status.HTTP_303_SEE_OTHER)
 
 
-@router.get("/reports", response_class=HTMLResponse)
+@router.get("/reports", response_class=HTMLResponse, include_in_schema=False)
 def dashboard_reports(request: Request, db: Session = Depends(get_db)):
     """View data quality, coverage and error reports."""
     cov = get_coverage_report(db)

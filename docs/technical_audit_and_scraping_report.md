@@ -182,10 +182,8 @@ All application capabilities can be operated purely through the backend REST API
 The API requires authentication on mutation endpoints. To authenticate in Swagger:
 1. Open [`http://localhost:8000/docs`](http://localhost:8000/docs).
 2. Click the green **Authorize 🔓** button at the top right.
-3. Under **`api_key_header (ApiKeyAuth)`**, enter:
-   ```text
-   test-operator-api-key-change-in-production
-   ```
+3. Under **`api_key_header (ApiKeyAuth)`**, enter the operator API key from your
+   Railway environment variables (or the operator runbook).
 4. Click **Authorize** → **Close**. All requests will now execute with `200 OK`.
 
 ---

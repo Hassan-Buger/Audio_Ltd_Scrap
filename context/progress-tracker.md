@@ -88,7 +88,7 @@ Update this file after every meaningful implementation or planning change. Recor
     - Saves raw HTML page snapshot to disk (`data/raw/<sha256>.html` and `<sha256>.json`) before parsing.
     - Scrapes product details, specifications, price, currency, availability, description, and images directly into database.
     - Returns full parsed product model directly in the Swagger/REST response for pure backend operation without frontend dependencies.
-    - Swagger UI configured with persistent authorization (`persistAuthorization: True`) and prominent guide banner for operator API key (`test-operator-api-key-change-in-production`).
+    - Swagger UI configured with persistent authorization (`persistAuthorization: True`) and operator API key authentication (key value never printed in docs; set via Railway env var).
   - Robust Product & Category Description Extraction:
     - Multi-tiered selectors covering Magento 1/2 (`.product.attribute.description`, `.std`, `#product_tabs_description_contents`, `#description`, `[itemprop="description"]`, `.category-description.std`).
     - Both JSON-LD schema and HTML DOM fallback extraction implemented with preference for rich/untruncated text.
@@ -99,6 +99,17 @@ Update this file after every meaningful implementation or planning change. Recor
     - Scraping control & ingestion (`POST /dashboard/settings/cookies`, `POST /api/v1/scraping/ingest-html`, `POST /api/v1/scraping/start`).
     - Catalog & search queries (`GET /api/v1/products`, `GET /api/v1/products/sku/E2E-TEST-001`, `GET /api/v1/search/products?q=Audison`).
     - Data exports & reporting (`/api/v1/exports/products/csv`, `/api/v1/exports/products/json`, `/api/v1/reports/overview`, `/api/v1/reports/coverage`, `/api/v1/reports/completeness`).
+
+- **FastAPI Swagger docs hardening** (revised 2026-11-20, API-only scope):
+  - Removed the operator API key value from all public surfaces (`main.py` description, `dependencies.py` security-scheme description + 401 message). The key now appears nowhere in `/openapi.json` or `/docs`.
+  - Hardened production defaults in `app/config.py`: `DEBUG=false`, explicit `ALLOWED_ORIGINS` (Railway + localhost), `SECRET_KEY`/`API_KEY` required in production via env (fail-fast validator), dev-only fallback clearly marked.
+  - Added `servers` list (Production Railway + localhost), contact and license info, and a clean getting-started description to the FastAPI constructor in `main.py`.
+  - Added worked `example`/`examples` to write-endpoint schemas (`CrawlJobCreate`, `SnapshotAndScrapePayload`, `URLListPayload`, `HTMLIngestPayload`, `ExportCreateRequest`) so Swagger "Try it out" prefills.
+  - Added `include_in_schema=False` to all 17 dashboard HTML/form routes (`dashboard/routes.py`) so `/docs` is API-only (Dashboard tag removed; 92 → 69 operations).
+  - Root URL `/` redirects to `/docs` (302) with `include_in_schema=False`. Dashboard remains accessible directly at `/dashboard`.
+  - Updated `README.md` (root and `scraper/README.md`) with live Railway docs URLs and a "Using the API docs" section; no key value printed.
+  - Key rotation scheduled: rotated in Railway dashboard (date: 2026-11-20). Value is never stored in git or chat.
+  - Local verification: 24/24 unit tests passed (pytest), 25/25 e2e checks passed (`e2e_localhost_test.py`), `/` redirects to `/docs`, `/openapi.json` has 69 paths and servers list, zero occurrences of old published key.
 
 ## In Progress
 

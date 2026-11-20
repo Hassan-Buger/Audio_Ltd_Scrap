@@ -9,8 +9,10 @@ import urllib.request
 import urllib.parse
 from datetime import datetime
 
+from app.config import settings
+
 BASE_URL = "http://localhost:8000"
-API_KEY = "test-operator-api-key-change-in-production"
+API_KEY = settings.API_KEY
 
 tests_run = 0
 tests_passed = 0

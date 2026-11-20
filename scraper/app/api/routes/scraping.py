@@ -36,17 +36,62 @@ router = APIRouter(prefix="/scraping", tags=["Scraping Control"])
 class URLListPayload(BaseModel):
     urls: List[str]
 
+    model_config = {"json_schema_extra": {
+        "example": {
+            "urls": [
+                "https://www.audiovideo.lt/gamintojai/hertz",
+                "https://www.audiovideo.lt/catalogsearch/result/?cat=0&q=audison",
+            ]
+        },
+        "examples": [
+            {
+                "urls": [
+                    "https://www.audiovideo.lt/gamintojai/hertz",
+                    "https://www.audiovideo.lt/catalogsearch/result/?cat=0&q=audison",
+                ]
+            }
+        ]
+    }}
+
 
 class HTMLIngestPayload(BaseModel):
     url: str
     html: str
     final_url: Optional[str] = None
 
+    model_config = {"json_schema_extra": {
+        "example": {
+            "url": "https://www.audiovideo.lt/prod-a.html",
+            "html": "<!doctype html><html><head><title>Test product</title></head><body><h1>Test product</h1></body></html>",
+            "final_url": "https://www.audiovideo.lt/prod-a.html",
+        },
+        "examples": [
+            {
+                "url": "https://www.audiovideo.lt/prod-a.html",
+                "html": "<!doctype html><html><head><title>Test product</title></head><body><h1>Test product</h1></body></html>",
+                "final_url": "https://www.audiovideo.lt/prod-a.html",
+            }
+        ]
+    }}
+
 
 class SnapshotAndScrapePayload(BaseModel):
     url: str = Field(..., description="Target Audiovideo.lt URL", json_schema_extra={"example": "https://www.audiovideo.lt/automobiliu-garso-aparatura/garso-izoliacija/standartplast-stp-black-silver-bulk-pack.html"})
     html_content: Optional[str] = Field(None, description="Optional raw HTML content. If supplied, saves directly to disk snapshot and parses without network call.", json_schema_extra={"example": None})
     force_refresh: bool = Field(False, description="If True, bypasses local disk snapshot cache and performs new fetch/save.")
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "url": "https://www.audiovideo.lt/automobiliu-garso-aparatura/garso-izoliacija/standartplast-stp-black-silver-bulk-pack.html",
+            "force_refresh": False,
+        },
+        "examples": [
+            {
+                "url": "https://www.audiovideo.lt/automobiliu-garso-aparatura/garso-izoliacija/standartplast-stp-black-silver-bulk-pack.html",
+                "force_refresh": False,
+            }
+        ]
+    }}
 
 
 

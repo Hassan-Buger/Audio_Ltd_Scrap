@@ -33,22 +33,32 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Audiovideo.lt Product Scraper & Operations API",
     description="""
-### 🎧 Audiovideo.lt Operations & Scraping Engine
+### Audiovideo.lt Product Scraper & Operations API
 
-#### 🔑 How to Authenticate in Swagger:
-To test protected endpoints (such as `/api/v1/scraping/*` and `/api/v1/jobs/*`):
-1. Click the **Authorize** button (green lock 🔓 at the top right of this page).
-2. Enter the Operator API Key:
-   ```text
-   test-operator-api-key-change-in-production
-   ```
-3. Click **Authorize** and then **Close**. All requests will now include the key automatically!
+Operates the Audiovideo.lt product catalogue scraper: crawl jobs, product/category/manufacturer
+listings, search, CSV/JSON exports, translations, and coverage reports.
+
+Quick start:
+1. Open `/docs`.
+2. Try `GET /api/v1/health` (no authentication required).
+3. Click **Authorize** and paste the operator API key (from your Railway environment variables
+   or the operator runbook).
+4. Try `POST /api/v1/scraping/start` to create a crawl job.
+
+All responses use the envelope `{ success, message, data, meta? }`.
+See `/redoc` for the readable API reference.
 """,
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
     swagger_ui_parameters={"persistAuthorization": True},
+    servers=[
+        {"url": "https://audioltdscrap-production.up.railway.app", "description": "Production (Railway)"},
+        {"url": "http://localhost:8000", "description": "Local development"},
+    ],
+    contact={"name": "Audiovideo.lt Scraper Operator"},
+    license_info={"name": "Proprietary — internal use"},
     lifespan=lifespan
 )
 
@@ -96,7 +106,7 @@ app.include_router(dashboard_router)
 
 @app.get("/", include_in_schema=False)
 def root_redirect():
-    return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+    return RedirectResponse(url="/docs", status_code=status.HTTP_302_FOUND)
 
 
 # Global Exception Handler for consistent error envelope

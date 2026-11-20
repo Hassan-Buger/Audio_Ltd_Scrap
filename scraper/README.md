@@ -45,9 +45,15 @@ alembic upgrade head
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 Navigate to:
-- Dashboard: `http://localhost:8000/dashboard`
-- Swagger API Docs: `http://localhost:8000/docs`
-- ReDoc API Docs: `http://localhost:8000/redoc`
+- Swagger API Docs: `http://localhost:8000/docs` (live: `https://audioltdscrap-production.up.railway.app/docs`)
+- ReDoc API Docs: `http://localhost:8000/redoc` (live: `https://audioltdscrap-production.up.railway.app/redoc`)
+- API Base: `http://localhost:8000/api/v1` (live: `https://audioltdscrap-production.up.railway.app/api/v1`)
+
+### Using the API docs
+1. Open `/docs` (or `https://audioltdscrap-production.up.railway.app/docs`) in your browser to view the interactive Swagger UI.
+2. Public GET endpoints (such as `GET /api/v1/health`) require no authentication.
+3. For protected endpoints (crawl jobs, exports, scraping mutations), click **Authorize** (lock icon) and paste the operator API key from your Railway environment variables.
+4. Authorization persists across page reloads. All write endpoints include prefilled example payloads ready to "Try it out".
 
 ### 4. Run Celery Worker
 ```bash

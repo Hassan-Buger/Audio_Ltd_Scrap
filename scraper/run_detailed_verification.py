@@ -9,7 +9,7 @@ from pathlib import Path
 from decimal import Decimal
 
 BASE_URL = "http://127.0.0.1:8000"
-API_KEY = "test-operator-api-key-change-in-production"
+API_KEY = "dev-operator-api-key-change-in-production"
 AUTH_HEADERS = {
     "X-API-Key": API_KEY,
     "Content-Type": "application/json"

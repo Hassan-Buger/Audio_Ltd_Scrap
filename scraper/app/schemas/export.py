@@ -31,6 +31,21 @@ class ExportCreateRequest(BaseModel):
     job_id: Optional[int] = None
     language: str = "lt"
 
+    model_config = {"json_schema_extra": {
+        "example": {
+            "export_type": "products",
+            "format": "csv",
+            "language": "lt",
+        },
+        "examples": [
+            {
+                "export_type": "products",
+                "format": "csv",
+                "language": "lt",
+            }
+        ]
+    }}
+
 
 class ExportStatusResponse(BaseModel):
     export_id: str

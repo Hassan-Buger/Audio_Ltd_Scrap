@@ -1,6 +1,6 @@
 """Application configuration using Pydantic Settings."""
 from typing import List, Union, Optional
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,14 +13,27 @@ class Settings(BaseSettings):
     )
 
     ENV: str = "development"
-    DEBUG: bool = True
+    DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
 
     HOST: str = "0.0.0.0"
     PORT: int = 8000
-    API_KEY: str = "test-operator-api-key-change-in-production"
-    SECRET_KEY: str = "change-me-to-a-secure-secret-key-in-production"
-    ALLOWED_ORIGINS: Union[str, List[str]] = ["*"]
+    # Operator API key. Development fallback only; production MUST set API_KEY
+    # via the Railway environment variable. Never commit a real key here.
+    API_KEY: Optional[str] = Field(
+        default="dev-operator-api-key-change-in-production",
+        description="Operator API key (dev fallback; production must set via env).",
+    )
+    SECRET_KEY: Optional[str] = Field(
+        default=None,
+        description="Application secret key. Required in production; set via env.",
+    )
+    # Explicit allowlist for CORS. Production should list the Railway host(s).
+    # Local development includes http://localhost:8000.
+    ALLOWED_ORIGINS: Union[str, List[str]] = [
+        "https://audioltdscrap-production.up.railway.app",
+        "http://localhost:8000",
+    ]
 
     # Database
     DATABASE_URL: str = Field(
@@ -72,6 +85,24 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             return [i.strip() for i in v.split(",") if i.strip()]
         return v
+
+    @model_validator(mode="after")
+    def validate_production_requirements(self) -> "Settings":
+        """Fail fast in production if required secrets are missing or still dev fallbacks."""
+        if self.ENV == "production":
+            if (
+                not self.API_KEY
+                or self.API_KEY == "dev-operator-api-key-change-in-production"
+            ):
+                raise ValueError(
+                    "API_KEY must be set via the Railway environment variable in production; "
+                    "the dev fallback is not allowed."
+                )
+            if not self.SECRET_KEY:
+                raise ValueError(
+                    "SECRET_KEY must be set via the Railway environment variable in production."
+                )
+        return self
 
 
 settings = Settings()

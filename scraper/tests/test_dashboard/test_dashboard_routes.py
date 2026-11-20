@@ -35,4 +35,4 @@ def test_dashboard_routes(client):
     # Root redirect
     r_root = client.get("/", follow_redirects=False)
     assert r_root.status_code == 302
-    assert r_root.headers["location"] == "/dashboard"
+    assert r_root.headers["location"] == "/docs"

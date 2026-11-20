@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database.session import get_db
 
-api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False, description="Enter API Key (default: test-operator-api-key-change-in-production)")
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False, description="Operator API key (X-API-Key header)")
 bearer_scheme = HTTPBearer(auto_error=False, description="Bearer token")
 
 
@@ -30,10 +30,7 @@ def verify_api_key(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={
                 "code": "UNAUTHORIZED",
-                "message": (
-                    f"Invalid or missing API key. Click the green 'Authorize' 🔓 button at the top of /docs "
-                    f"and enter: '{settings.API_KEY}' (or pass 'X-API-Key' header / '?api_key={settings.API_KEY}')."
-                )
+                "message": "Invalid or missing API key. Click Authorize in /docs and enter the operator API key."
             }
         )
     return token

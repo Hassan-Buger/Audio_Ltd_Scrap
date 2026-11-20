@@ -35,6 +35,38 @@ class CrawlJobCreate(BaseModel):
     max_urls: Optional[int] = Field(default=10000, ge=1, le=100000)
     use_playwright: bool = Field(default=False, description="Enable Playwright browser fallback")
 
+    model_config = {"json_schema_extra": {
+        "example": {
+            "scope": "custom_urls",
+            "seed_urls": [
+                "https://www.audiovideo.lt/gamintojai/hertz",
+                "https://www.audiovideo.lt/catalogsearch/result/?cat=0&q=audison",
+            ],
+            "max_depth": 3,
+            "max_urls": 100,
+            "use_playwright": False,
+        },
+        "examples": [
+            {
+                "scope": "custom_urls",
+                "seed_urls": [
+                    "https://www.audiovideo.lt/gamintojai/hertz",
+                    "https://www.audiovideo.lt/catalogsearch/result/?cat=0&q=audison",
+                ],
+                "max_depth": 3,
+                "max_urls": 100,
+                "use_playwright": False,
+            },
+            {
+                "scope": "category",
+                "category_id": 1,
+                "max_depth": 5,
+                "max_urls": 500,
+                "use_playwright": False,
+            },
+        ]
+    }}
+
 
 class CrawlJobProgressResponse(BaseModel):
     job_id: int
