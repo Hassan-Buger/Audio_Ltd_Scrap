@@ -319,7 +319,9 @@ def _extract_images(soup: BeautifulSoup, base_url: str) -> List[str]:
     search_scope = gallery if gallery else soup
 
     for img in search_scope.find_all("img"):
-        src = img.get("src") or img.get("data-src") or img.get("data-zoom-image")
+        src = img.get("data-zoom-image") or img.get("data-src") or img.get("data-original") or img.get("data-lazy-src") or img.get("src")
+        if src and src.startswith("data:"):
+            src = img.get("data-zoom-image") or img.get("data-src") or img.get("data-original") or img.get("data-lazy-src")
         if src and not src.startswith("data:"):
             full = urljoin(base_url, src.strip())
             # Exclude small icons or logos

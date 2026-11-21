@@ -170,7 +170,10 @@ def extract_listing_product_items(soup: BeautifulSoup, base_url: str) -> List[Di
         img_el = card.find("img")
         img_url = None
         if img_el:
-            src = img_el.get("src") or img_el.get("data-src")
+            src = img_el.get("data-src") or img_el.get("data-original") or img_el.get("data-lazy-src") or img_el.get("src")
+            if src and src.startswith("data:"):
+                # fallback if src was data URL but maybe another attr has the real image
+                src = img_el.get("data-src") or img_el.get("data-original") or img_el.get("data-lazy-src")
             if src and not src.startswith("data:"):
                 img_url = urljoin(base_url, src.strip())
 
