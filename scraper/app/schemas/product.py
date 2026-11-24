@@ -11,6 +11,8 @@ class SpecificationItem(BaseModel):
     numeric_value: Optional[Decimal] = Field(default=None, description="Parsed numeric value if present")
     unit: Optional[str] = Field(default=None, description="Parsed unit if present")
 
+    model_config = {"from_attributes": True}
+
 
 class ProductTranslationSchema(BaseModel):
     id: Optional[int] = None
@@ -80,11 +82,20 @@ class ProductResponse(ProductBase):
     created_at: datetime
     updated_at: datetime
 
+    # WooCommerce-compatible Aliases and Enriched Fields
+    source_id: Optional[str] = Field(default=None, description="External/WooCommerce entity ID")
+    source_url: Optional[str] = Field(default=None, description="Canonical source page URL")
+    brand: Optional[str] = Field(default=None, description="Brand name alias")
+    category_name: Optional[str] = Field(default=None, description="Primary category name")
+    category_slug: Optional[str] = Field(default=None, description="Primary category slug")
+    title_en: Optional[str] = Field(default=None, description="English translated title if available")
+    sale_price: Optional[float] = Field(default=None, description="Discounted price if on sale")
+    specifications: List[SpecificationItem] = Field(default_factory=list, description="Structured key-value specifications")
+
     model_config = {"from_attributes": True}
 
 
 class ProductDetailResponse(ProductResponse):
-    specifications: List[SpecificationItem] = Field(default_factory=list)
     category_names: List[str] = Field(default_factory=list)
     sources: List[ProductSourceSchema] = Field(default_factory=list)
     translations: List[ProductTranslationSchema] = Field(default_factory=list)

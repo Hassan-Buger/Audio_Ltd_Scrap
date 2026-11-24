@@ -9,6 +9,7 @@ Update this file after every meaningful implementation or planning change. Recor
 - Phase 4 - 15: Full application foundation, database models, durable frontier, extraction engines, complete REST API (`/api/v1/`), Jinja2 + HTMX operator dashboard, Docker / Railway setup, and Pytest test suite implemented inside `scraper/`.
 - Phase 16: Production readiness, description extraction fix, Swagger UI persistent authorization, and dual-mode authentication (header / query parameter) completed.
 - Phase 17: Validated "Webpage, HTML Only" snapshot ingestion for category listing (`/automobiliu-garso-aparatura/garso-izoliacija?p=1`). Enhanced listing and product image extractors to resolve lazyloaded `data-src` URLs when images have base64 placeholder `src`. All 24 unit tests passing (100%).
+- Phase 18: Implemented Cloudflare-free media proxy (`/media/catalog/product/...`), enriched `ProductResponse` with full WooCommerce specifications & aliases (`source_id`, `source_url`, `brand`, `category_name`, `category_slug`, `sale_price`), added `category` string filter to `GET /api/v1/products`, added listing-to-product database upserts on category ingestion, added `POST /api/v1/scraping/batch-upload` ZIP endpoint, and created local Playwright detail extraction script `scripts/scrape_category_products.py`. All 27 automated tests passing (100%).
 
 ## Current Goal
 

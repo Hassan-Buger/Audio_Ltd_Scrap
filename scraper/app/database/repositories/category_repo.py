@@ -49,6 +49,11 @@ class CategoryRepository:
         return db.get(Category, category_id)
 
     @staticmethod
+    def get_by_url(db: Session, url: str) -> Optional[Category]:
+        stmt = select(Category).where(Category.source_url == url)
+        return db.execute(stmt).scalar_one_or_none()
+
+    @staticmethod
     def get_by_slug(db: Session, slug: str) -> Optional[Category]:
         stmt = select(Category).where(Category.slug == slug)
         return db.execute(stmt).scalar_one_or_none()

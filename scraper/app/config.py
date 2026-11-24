@@ -54,6 +54,24 @@ class Settings(BaseSettings):
         default=None,
         description="Optional session or cf_clearance cookies obtained from an authorized human browser session."
     )
+    # Residential proxy or FlareSolverr endpoint to bypass datacenter IP blocks
+    RESIDENTIAL_PROXY_URL: Optional[str] = Field(
+        default=None,
+        description="Residential proxy URL (e.g. http://user:pass@gate.smartproxy.com:7000) for crawling and image downloads."
+    )
+    FLARESOLVERR_URL: Optional[str] = Field(
+        default=None,
+        description="Optional FlareSolverr instance URL (e.g. http://localhost:8191/v1) for challenge resolution."
+    )
+    # Public service base URL used to rewrite image and API links
+    BASE_URL: str = Field(
+        default="https://audioltdscrap-production.up.railway.app",
+        description="Public base URL of this application service."
+    )
+    MEDIA_DIR: str = Field(
+        default="data/media",
+        description="Local directory for caching and serving downloaded product images."
+    )
     CRAWL_CONCURRENCY: int = 2
     CRAWL_DOWNLOAD_DELAY: float = 2.0
     CRAWL_MAX_RETRIES: int = 3

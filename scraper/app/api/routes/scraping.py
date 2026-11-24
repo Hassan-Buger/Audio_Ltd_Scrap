@@ -314,12 +314,15 @@ def snapshot_and_scrape(
 
     # Step 2: Parse and Scrape the Saved HTML Page
     soup = BeautifulSoup(html, "lxml")
+    has_product_form = bool(soup.select_one("form#product_addtocart_form, .product-view, .product-essential, .product-info-main"))
+    has_category_listing = bool(soup.select_one(".products-grid, .category-products, .products-list"))
+
     is_product = (
-        url.endswith(".html") or
+        has_product_form or
+        (url.endswith(".html") and not has_category_listing) or
         bool(soup.find("script", type="application/ld+json", string=lambda s: s and '"Product"' in s)) or
-        bool(soup.find(attrs={"itemtype": lambda v: v and "Product" in v})) or
-        bool(soup.select_one(".product-info-main"))
-    )
+        bool(soup.find(attrs={"itemtype": lambda v: v and "Product" in v}))
+    ) and not has_category_listing
 
     if is_product:
         prod_create = extract_product_detail(html, effective_url)
@@ -378,6 +381,69 @@ def snapshot_and_scrape(
         prod_urls = extract_listing_products(soup, effective_url)
         cat_desc = extract_category_description(soup)
         listing_items = extract_listing_product_items(soup, effective_url)
+
+        # Ingest category and upsert products from listing
+        from decimal import Decimal
+        from app.schemas.category import CategoryCreate
+        from app.schemas.product import ProductCreate
+
+        cat_slug = effective_url.rstrip("/").split("/")[-1].split("?")[0]
+        category_obj = (
+            CategoryRepository.get_by_url(db, effective_url)
+            or CategoryRepository.get_by_slug(db, cat_slug)
+        )
+        if not category_obj and cat_slug:
+            h1 = soup.find("h1")
+            cat_name = h1.get_text(strip=True) if h1 else cat_slug.replace("-", " ").title()
+            cat_obj_create = CategoryCreate(name=cat_name, slug=cat_slug, source_url=effective_url)
+            category_obj = CategoryRepository.upsert_category(db, cat_obj_create)
+
+        cat_ids = [category_obj.id] if category_obj else []
+
+        saved_products_count = 0
+        for item in listing_items:
+            if not item.get("url") or not item.get("title"):
+                continue
+
+            t_low = item["title"].lower()
+            inferred_brand = None
+            for b_cand in [
+                "Bass Habit", "Hertz", "Audison", "Silent Coat", "Noise Protection",
+                "SilenceWorld", "Boom", "STP", "Standartplast", "Alpine", "Pioneer", "JBL", "Focal"
+            ]:
+                if b_cand.lower() in t_low:
+                    inferred_brand = b_cand
+                    break
+            if not inferred_brand:
+                if "hertz" in effective_url.lower():
+                    inferred_brand = "Hertz"
+                elif "audison" in effective_url.lower():
+                    inferred_brand = "Audison"
+                elif "bass" in effective_url.lower():
+                    inferred_brand = "Bass Habit"
+
+            p_price = None
+            if item.get("price") is not None:
+                try:
+                    p_price = Decimal(str(item["price"]))
+                except Exception:
+                    p_price = None
+
+            prod_create = ProductCreate(
+                canonical_url=item["url"],
+                title=item["title"],
+                price=p_price,
+                currency=item.get("currency") or "EUR",
+                images=[item["image"]] if item.get("image") else [],
+                category_ids=cat_ids,
+                brand_name=inferred_brand,
+                in_stock=True,
+                availability="in_stock",
+                is_complete=False
+            )
+            ProductRepository.upsert_product(db, prod_create)
+            saved_products_count += 1
+
         db.commit()
 
         return APIResponse(
@@ -428,6 +494,73 @@ async def upload_and_scrape_file(
         force_refresh=force_refresh
     )
     return snapshot_and_scrape(payload=payload, db=db, _=_)
+
+
+@router.post(
+    "/batch-upload",
+    response_model=APIResponse[dict],
+    summary="Upload ZIP archive of saved HTML files for bulk ingestion",
+    description="Upload a .zip file containing saved product and/or category .html files. Automatically extracts full descriptions, specifications tables, and gallery images in bulk.",
+)
+async def batch_upload_html_archive(
+    file: UploadFile = File(..., description="ZIP archive containing saved .html files"),
+    db: Session = Depends(get_db),
+    _: str = Depends(verify_api_key)
+):
+    """Bulk ingestion of multiple saved HTML pages from a ZIP file."""
+    import zipfile
+    import io
+
+    archive_bytes = await file.read()
+    if not zipfile.is_zipfile(io.BytesIO(archive_bytes)):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "INVALID_ARCHIVE", "message": "Uploaded file is not a valid ZIP archive."}
+        )
+
+    processed_count = 0
+    product_count = 0
+    category_count = 0
+    errors = []
+
+    with zipfile.ZipFile(io.BytesIO(archive_bytes)) as zf:
+        for fname in zf.namelist():
+            if not fname.endswith(".html") and not fname.endswith(".htm"):
+                continue
+            try:
+                html_bytes = zf.read(fname)
+                html_text = html_bytes.decode("utf-8", errors="ignore")
+                
+                # Derive canonical url from HTML <link rel='canonical'> or filename
+                soup_item = BeautifulSoup(html_text, "lxml")
+                can_link = soup_item.find("link", rel=lambda r: r and "canonical" in r)
+                item_url = can_link["href"].strip() if (can_link and can_link.get("href")) else f"https://www.audiovideo.lt/{Path(fname).stem}"
+                
+                payload = SnapshotAndScrapePayload(
+                    url=item_url,
+                    html_content=html_text,
+                    force_refresh=True
+                )
+                res = snapshot_and_scrape(payload=payload, db=db, _=_)
+                processed_count += 1
+                if res.data.get("page_type") == "product":
+                    product_count += 1
+                else:
+                    category_count += 1
+            except Exception as e:
+                errors.append(f"{fname}: {str(e)}")
+
+    return APIResponse(
+        success=True,
+        message=f"Batch processed {processed_count} files ({product_count} products, {category_count} categories/listings)",
+        data={
+            "processed_total": processed_count,
+            "products_saved": product_count,
+            "categories_saved": category_count,
+            "errors_count": len(errors),
+            "errors": errors[:10]
+        }
+    )
 
 
 @router.get(

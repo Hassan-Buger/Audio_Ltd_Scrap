@@ -253,6 +253,7 @@ class ProductRepository:
         sku: Optional[str] = None,
         ean: Optional[str] = None,
         brand: Optional[str] = None,
+        category: Optional[str] = None,
         category_id: Optional[int] = None,
         manufacturer_id: Optional[int] = None,
         min_price: Optional[Decimal] = None,
@@ -261,10 +262,35 @@ class ProductRepository:
         sort_order: str = "asc"
     ) -> Tuple[List[Product], int]:
         """Query products with filtering, search, and pagination."""
-        stmt = select(Product)
+        stmt = select(Product).options(
+            joinedload(Product.specifications),
+            joinedload(Product.categories),
+            joinedload(Product.translations),
+        )
+        count_stmt = select(func.count(func.distinct(Product.id)))
 
-        if category_id is not None:
+        if category:
+            clean_cat = category.strip()
+            cat_kw = f"%{clean_cat.replace('-', '%')}%"
+            cat_filter = or_(
+                Category.slug == clean_cat,
+                Category.slug.ilike(f"%{clean_cat}%"),
+                Category.name.ilike(f"%{clean_cat}%"),
+                Category.name.ilike(cat_kw),
+                Product.brand_name.ilike(f"%{clean_cat}%"),
+                Product.brand_name.ilike(cat_kw)
+            )
+            stmt = stmt.outerjoin(ProductCategory, ProductCategory.product_id == Product.id).outerjoin(
+                Category, Category.id == ProductCategory.category_id
+            ).where(cat_filter)
+            count_stmt = count_stmt.outerjoin(ProductCategory, ProductCategory.product_id == Product.id).outerjoin(
+                Category, Category.id == ProductCategory.category_id
+            ).where(cat_filter)
+        elif category_id is not None:
             stmt = stmt.join(ProductCategory, ProductCategory.product_id == Product.id).where(
+                ProductCategory.category_id == category_id
+            )
+            count_stmt = count_stmt.join(ProductCategory, ProductCategory.product_id == Product.id).where(
                 ProductCategory.category_id == category_id
             )
 
@@ -295,14 +321,6 @@ class ProductRepository:
 
         if conditions:
             stmt = stmt.where(and_(*conditions))
-
-        # Total count
-        count_stmt = select(func.count(func.distinct(Product.id)))
-        if category_id is not None:
-            count_stmt = count_stmt.join(ProductCategory, ProductCategory.product_id == Product.id).where(
-                ProductCategory.category_id == category_id
-            )
-        if conditions:
             count_stmt = count_stmt.where(and_(*conditions))
 
         total = db.scalar(count_stmt) or 0
@@ -314,7 +332,7 @@ class ProductRepository:
 
         offset = (page - 1) * page_size
         stmt = stmt.offset(offset).limit(page_size)
-        items = list(db.execute(stmt).scalars().all())
+        items = list(db.execute(stmt).scalars().unique().all())
 
         return items, total
 

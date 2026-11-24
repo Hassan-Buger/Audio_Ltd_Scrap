@@ -9,6 +9,7 @@ from .jobs import router as jobs_router
 from .exports import router as exports_router
 from .translations import router as translations_router
 from .reports import router as reports_router
+from .media import router as media_router
 
 __all__ = [
     "health_router",
@@ -21,4 +22,5 @@ __all__ = [
     "exports_router",
     "translations_router",
     "reports_router",
+    "media_router",
 ]

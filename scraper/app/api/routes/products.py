@@ -1,5 +1,5 @@
 """Product catalogue API endpoints."""
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from decimal import Decimal
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.orm import Session
@@ -10,18 +10,78 @@ from app.schemas.product import (
     ProductUpdate, SpecificationItem, ProductSourceSchema, ProductTranslationSchema
 )
 from app.database.repositories.product_repo import ProductRepository
+from app.api.routes.media import rewrite_image_url
 
 router = APIRouter(prefix="/products", tags=["Products"])
+
+
+def _format_product_data(prod) -> ProductResponse:
+    """Format product model into WooCommerce-compatible ProductResponse with specifications and media URLs."""
+    specs = [
+        SpecificationItem(
+            label=s.label,
+            value=s.value,
+            numeric_value=getattr(s, "numeric_value", None),
+            unit=getattr(s, "unit", None)
+        )
+        if hasattr(s, "label") else SpecificationItem(**s)
+        for s in (prod.specifications or [])
+    ]
+    rewritten_images = [rewrite_image_url(img) for img in (prod.images or [])]
+    
+    first_cat = prod.categories[0] if (hasattr(prod, "categories") and prod.categories) else None
+    cat_name = first_cat.name if first_cat else (prod.brand_name or None)
+    cat_slug = first_cat.slug if first_cat else (prod.brand_name.lower().replace(" ", "-") if prod.brand_name else None)
+    
+    title_en = None
+    if hasattr(prod, "translations") and prod.translations:
+        title_en = prod.translations[0].title
+    if not title_en:
+        title_en = prod.title
+
+    avail = "in_stock" if prod.in_stock else ("out_of_stock" if prod.in_stock is False else (prod.availability or "in_stock"))
+    sale_pr = float(prod.price) if (prod.regular_price and prod.price and prod.regular_price > prod.price) else None
+
+    return ProductResponse(
+        id=prod.id,
+        source_id=str(prod.id),
+        canonical_url=prod.canonical_url,
+        source_url=prod.canonical_url,
+        title=prod.title,
+        title_en=title_en,
+        sku=prod.sku,
+        ean=prod.ean,
+        model=prod.model,
+        manufacturer_id=prod.manufacturer_id,
+        brand_name=prod.brand_name,
+        brand=prod.brand_name or (prod.manufacturer.name if prod.manufacturer else None),
+        category_name=cat_name,
+        category_slug=cat_slug,
+        price=prod.price,
+        regular_price=prod.regular_price,
+        sale_price=sale_pr,
+        currency=prod.currency or "EUR",
+        availability=avail,
+        in_stock=prod.in_stock,
+        description=prod.description,
+        images=rewritten_images,
+        is_complete=prod.is_complete,
+        specifications=specs,
+        created_at=prod.created_at,
+        updated_at=prod.updated_at
+    )
 
 
 @router.get("", response_model=APIResponse[List[ProductResponse]])
 def list_products(
     page: int = Query(1, ge=1),
-    page_size: int = Query(50, ge=1, le=500),
+    page_size: Optional[int] = Query(None, ge=1, le=500),
+    limit: Optional[int] = Query(None, ge=1, le=500, description="Page limit (alias for page_size commonly used in WooCommerce)"),
     search: Optional[str] = None,
     sku: Optional[str] = None,
     ean: Optional[str] = None,
     brand: Optional[str] = None,
+    category: Optional[str] = Query(None, description="Category slug or name (e.g. garso-izoliacija, hertz, audison, bass-habit)"),
     category_id: Optional[int] = None,
     manufacturer_id: Optional[int] = None,
     min_price: Optional[Decimal] = None,
@@ -30,21 +90,22 @@ def list_products(
     sort_order: str = Query("asc", pattern="^(asc|desc)$"),
     db: Session = Depends(get_db)
 ):
-    """List products with pagination, search and filtering."""
+    """List products with pagination, search, category filtering, specifications, and media proxy URLs."""
+    eff_page_size = limit or page_size or 50
     items, total = ProductRepository.list_products(
-        db, page=page, page_size=page_size, search=search, sku=sku,
-        ean=ean, brand=brand, category_id=category_id, manufacturer_id=manufacturer_id,
+        db, page=page, page_size=eff_page_size, search=search, sku=sku,
+        ean=ean, brand=brand, category=category, category_id=category_id, manufacturer_id=manufacturer_id,
         min_price=min_price, max_price=max_price, sort_by=sort_by, sort_order=sort_order
     )
-    total_pages = (total + page_size - 1) // page_size if page_size > 0 else 0
+    total_pages = (total + eff_page_size - 1) // eff_page_size if eff_page_size > 0 else 0
 
     return APIResponse(
         success=True,
         message="Products retrieved successfully",
-        data=[ProductResponse.model_validate(p) for p in items],
+        data=[_format_product_data(p) for p in items],
         meta=PaginationMeta(
             page=page,
-            page_size=page_size,
+            page_size=eff_page_size,
             total=total,
             total_pages=total_pages
         )
@@ -163,7 +224,7 @@ def create_product(
     return APIResponse(
         success=True,
         message="Product created successfully",
-        data=ProductResponse.model_validate(prod)
+        data=_format_product_data(prod)
     )
 
 
@@ -183,7 +244,7 @@ def update_product(
     return APIResponse(
         success=True,
         message="Product updated successfully",
-        data=ProductResponse.model_validate(prod)
+        data=_format_product_data(prod)
     )
 
 
@@ -208,9 +269,13 @@ def delete_product(
 def _format_product_detail(prod) -> ProductDetailResponse:
     specs = [
         SpecificationItem(
-            label=s.label, value=s.value, numeric_value=s.numeric_value, unit=s.unit
+            label=s.label,
+            value=s.value,
+            numeric_value=getattr(s, "numeric_value", None),
+            unit=getattr(s, "unit", None)
         )
-        for s in prod.specifications
+        if hasattr(s, "label") else SpecificationItem(**s)
+        for s in (prod.specifications or [])
     ]
     sources = [
         ProductSourceSchema(
@@ -220,7 +285,7 @@ def _format_product_detail(prod) -> ProductDetailResponse:
             crawl_job_id=s.crawl_job_id,
             discovered_at=s.discovered_at
         )
-        for s in prod.sources
+        for s in (prod.sources or [])
     ]
     translations = [
         ProductTranslationSchema(
@@ -231,26 +296,40 @@ def _format_product_detail(prod) -> ProductDetailResponse:
             provider=t.provider,
             created_at=t.created_at
         )
-        for t in prod.translations
+        for t in (prod.translations or [])
     ]
-    cats = [c.name for c in prod.categories]
+    cats = [c.name for c in (prod.categories or [])]
+    first_cat = prod.categories[0] if (hasattr(prod, "categories") and prod.categories) else None
+    cat_slug = first_cat.slug if first_cat else (prod.brand_name.lower().replace(" ", "-") if prod.brand_name else None)
+
+    title_en = translations[0].title if translations else prod.title
+    rewritten_images = [rewrite_image_url(img) for img in (prod.images or [])]
+    avail = "in_stock" if prod.in_stock else ("out_of_stock" if prod.in_stock is False else (prod.availability or "in_stock"))
+    sale_pr = float(prod.price) if (prod.regular_price and prod.price and prod.regular_price > prod.price) else None
 
     return ProductDetailResponse(
         id=prod.id,
+        source_id=str(prod.id),
         canonical_url=prod.canonical_url,
+        source_url=prod.canonical_url,
         title=prod.title,
+        title_en=title_en,
         sku=prod.sku,
         ean=prod.ean,
         model=prod.model,
         manufacturer_id=prod.manufacturer_id,
         brand_name=prod.brand_name,
+        brand=prod.brand_name or (prod.manufacturer.name if prod.manufacturer else None),
+        category_name=cats[0] if cats else (prod.brand_name or None),
+        category_slug=cat_slug,
         price=prod.price,
         regular_price=prod.regular_price,
-        currency=prod.currency,
-        availability=prod.availability,
+        sale_price=sale_pr,
+        currency=prod.currency or "EUR",
+        availability=avail,
         in_stock=prod.in_stock,
         description=prod.description,
-        images=prod.images,
+        images=rewritten_images,
         is_complete=prod.is_complete,
         created_at=prod.created_at,
         updated_at=prod.updated_at,

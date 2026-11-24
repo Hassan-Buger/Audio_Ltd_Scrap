@@ -19,6 +19,7 @@ from app.api.routes import (
     exports_router,
     translations_router,
     reports_router,
+    media_router,
 )
 from app.dashboard.routes import router as dashboard_router
 
@@ -88,6 +89,7 @@ app.include_router(jobs_router, prefix=API_V1_PREFIX)
 app.include_router(exports_router, prefix=API_V1_PREFIX)
 app.include_router(translations_router, prefix=API_V1_PREFIX)
 app.include_router(reports_router, prefix=API_V1_PREFIX)
+app.include_router(media_router)  # Handles /media/catalog/product/... at root and /api/v1/media/...
 
 # Top-level Health and Readiness endpoints (per architecture.md)
 @app.get("/health", tags=["Health & System"])
