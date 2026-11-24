@@ -24,4 +24,4 @@ COPY . .
 RUN if [ -d "scraper/app" ]; then cp -r scraper/* . && rm -rf scraper; fi
 
 # Run Alembic migrations and start Web server binding to dynamic $PORT
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "alembic upgrade head || true && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
