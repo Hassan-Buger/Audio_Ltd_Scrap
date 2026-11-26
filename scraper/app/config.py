@@ -32,7 +32,10 @@ class Settings(BaseSettings):
     # Local development includes http://localhost:8000.
     ALLOWED_ORIGINS: Union[str, List[str]] = [
         "https://audioltdscrap-production.up.railway.app",
+        "https://audioltdscrap-production-540ccae2.up.railway.app",
         "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "*",
     ]
 
     # Database

@@ -54,19 +54,16 @@ See `/redoc` for the readable API reference.
     redoc_url="/redoc",
     openapi_url="/openapi.json",
     swagger_ui_parameters={"persistAuthorization": True},
-    servers=[
-        {"url": "https://audioltdscrap-production.up.railway.app", "description": "Production (Railway)"},
-        {"url": "http://localhost:8000", "description": "Local development"},
-    ],
     contact={"name": "Audiovideo.lt Scraper Operator"},
     license_info={"name": "Proprietary — internal use"},
     lifespan=lifespan
 )
 
-# CORS
+# CORS: Allow current domain, dynamic Railway deployment URLs (*.up.railway.app), and local development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=settings.ALLOWED_ORIGINS if settings.ALLOWED_ORIGINS != ["*"] else ["*"],
+    allow_origin_regex=r"https://.*\.railway\.app|https://.*\.up\.railway\.app|http://localhost:\d+|http://127\.0\.0\.1:\d+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
