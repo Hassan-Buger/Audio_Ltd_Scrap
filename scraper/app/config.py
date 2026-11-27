@@ -68,7 +68,7 @@ class Settings(BaseSettings):
     )
     # Public service base URL used to rewrite image and API links
     BASE_URL: str = Field(
-        default="https://audioltdscrap-production.up.railway.app",
+        default="https://audioltdscrap-production-540ccae2.up.railway.app",
         description="Public base URL of this application service."
     )
     MEDIA_DIR: str = Field(

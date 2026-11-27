@@ -24,8 +24,35 @@ DEFAULT_TARGETS = [
     "https://www.audiovideo.lt/catalogsearch/result/?cat=0&q=bass+habit",
 ]
 
-DEFAULT_API = os.getenv("API_URL", "https://audioltdscrap-production.up.railway.app")
+DEFAULT_API = os.getenv("API_URL", "https://audioltdscrap-production-540ccae2.up.railway.app")
 DEFAULT_KEY = os.getenv("API_KEY", "")
+
+
+def fetch_incomplete_urls_from_api(api_url: str) -> List[str]:
+    """Fetch all product URLs from the API where is_complete is False."""
+    urls: List[str] = []
+    page = 1
+    while True:
+        resp = httpx.get(
+            f"{api_url.rstrip('/')}/api/v1/products",
+            params={"page": page, "limit": 200},
+            timeout=30.0,
+        )
+        resp.raise_for_status()
+        payload = resp.json()
+        items = payload.get("data", [])
+        if not items:
+            break
+        for item in items:
+            if not item.get("is_complete"):
+                u = item.get("source_url") or item.get("canonical_url")
+                if u:
+                    urls.append(u)
+        meta = payload.get("meta") or {}
+        if page >= (meta.get("total_pages") or 1):
+            break
+        page += 1
+    return urls
 
 
 def extract_product_links_from_category(html: str, base_url: str) -> List[str]:
@@ -115,13 +142,17 @@ def crawl_with_playwright(product_urls: List[str], api_url: str, api_key: str, o
 def main():
     parser = argparse.ArgumentParser(description="Audiovideo.lt Product Detail Ingestion Script")
     parser.add_argument("--category-file", help="Path to local category HTML file to extract product URLs from")
+    parser.add_argument("--from-api", action="store_true", help="Fetch incomplete product URLs directly from the API")
     parser.add_argument("--api-url", default=DEFAULT_API, help="Base URL of Railway API")
     parser.add_argument("--api-key", default=DEFAULT_KEY, help="Operator API key")
     parser.add_argument("--zip-output", default="products_batch.zip", help="Zip file to save HTML snapshots into")
     args = parser.parse_args()
 
     urls = []
-    if args.category_file:
+    if args.from_api:
+        urls = fetch_incomplete_urls_from_api(args.api_url)
+        print(f"Fetched {len(urls)} incomplete product URLs from {args.api_url}")
+    elif args.category_file:
         p = Path(args.category_file)
         if p.exists():
             html = p.read_text(encoding="utf-8", errors="replace")
@@ -129,7 +160,7 @@ def main():
             print(f"Extracted {len(urls)} product URLs from {p}")
 
     if not urls:
-        print("No product URLs found. Provide --category-file <path_to_saved_category.html>")
+        print("No product URLs found. Provide --from-api or --category-file <path_to_saved_category.html>")
         return
 
     crawl_with_playwright(urls, args.api_url, args.api_key, args.zip_output)
